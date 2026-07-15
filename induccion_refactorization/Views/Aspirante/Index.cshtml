@@ -1,0 +1,156 @@
+@model induccion_refactorization.ViewModels.AspiranteDashboardViewModel
+@{
+    ViewBag.Title = "Mi Espacio de Inducción";
+}
+
+<div class="mb-4">
+    <h2 class="mb-1"><i class="fas fa-graduation-cap text-primary"></i> Mi Espacio de Inducción</h2>
+    <p class="text-muted mb-0">Bienvenido, <strong>@Model.NombreCompleto</strong></p>
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.Error as string))
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i> @ViewBag.Error
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="text-muted small">Matrícula</div>
+                <div class="fw-semibold">@(string.IsNullOrEmpty(Model.Matricula) ? "Sin asignar" : Model.Matricula)</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Folio</div>
+                <div class="fw-semibold">@Model.Folio</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Correo</div>
+                <div class="fw-semibold">@Model.Email</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.MateriasProgreso.Any())
+{
+    var totalUnidadesGeneral = Model.MateriasProgreso.Sum(m => m.TotalUnidades);
+    var completadasGeneral = Model.MateriasProgreso.Sum(m => m.UnidadesCompletadas);
+    var porcentajeGeneral = totalUnidadesGeneral > 0 ? (int)((completadasGeneral * 100.0) / totalUnidadesGeneral) : 0;
+
+    <div class="row mb-4 g-3">
+        <div class="col-md-4 col-sm-6">
+            <div class="stat-card">
+                <div class="icon-badge icon-badge-primary"><i class="fas fa-book"></i></div>
+                <div>
+                    <div class="stat-card-value">@Model.MateriasProgreso.Count</div>
+                    <div class="stat-card-label">Materias Asignadas</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <div class="stat-card">
+                <div class="icon-badge icon-badge-info"><i class="fas fa-list-ol"></i></div>
+                <div>
+                    <div class="stat-card-value">@completadasGeneral de @totalUnidadesGeneral</div>
+                    <div class="stat-card-label">Unidades Completadas</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <div class="stat-card">
+                <div class="icon-badge icon-badge-success"><i class="fas fa-chart-pie"></i></div>
+                <div>
+                    <div class="stat-card-value">@porcentajeGeneral%</div>
+                    <div class="stat-card-label">Progreso General</div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Mis Cursos Asignados</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.MateriasProgreso.Any())
+        {
+            <div class="row g-3">
+                @foreach (var item in Model.MateriasProgreso)
+                {
+                    <div class="col-md-6">
+                        <div class="course-card">
+                            <div class="d-flex align-items-start justify-content-between mb-2">
+                                <h6 class="mb-0"><i class="fas fa-book text-primary"></i> @item.Materia.Nombre</h6>
+                                @if (item.PromedioCalificacion.HasValue && item.UnidadesCompletadas > 0)
+                                {
+                                    <span class="badge bg-success">@item.PromedioCalificacion.Value.ToString("F2")</span>
+                                }
+                            </div>
+                            <p class="text-muted small mb-3">
+                                @if (!string.IsNullOrEmpty(item.Materia.Descripcion))
+                                {
+                                    @(item.Materia.Descripcion.Length > 100 ? item.Materia.Descripcion.Substring(0, 100) + "..." : item.Materia.Descripcion)
+                                }
+                                else
+                                {
+                                    @:Sin descripción disponible
+                                }
+                            </p>
+
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="small text-muted">Progreso</span>
+                                <span class="badge bg-primary">@item.UnidadesCompletadas de @item.TotalUnidades</span>
+                            </div>
+                            <div class="progress mb-3" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar" style="width: @(item.PorcentajeProgreso)%;"
+                                     aria-valuenow="@item.PorcentajeProgreso" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+
+                            <a href="@Url.Action("MateriaDetails", "Aspirante", new { id = item.Materia.MateriaID })"
+                               class="btn btn-sm btn-primary w-100">
+                                Ver Contenido <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon-badge icon-badge-lg icon-badge-info">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <div class="empty-state-title">Sin materias asignadas</div>
+                <p class="mb-0">Contacta al coordinador académico para obtener más información.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@section styles {
+    <style>
+        .course-card {
+            background-color: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius);
+            border-left: 3px solid var(--primary-color);
+            padding: 1rem 1.25rem;
+            height: 100%;
+            transition: box-shadow var(--transition-base), transform var(--transition-base);
+        }
+
+        .course-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .progress-bar {
+            background-color: var(--primary-color);
+        }
+    </style>
+}

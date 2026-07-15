@@ -1,0 +1,104 @@
+@{
+    ViewBag.Title = "Panel de Coordinación";
+}
+
+<div class="mb-4">
+    <h2 class="mb-1"><i class="fas fa-users-cog text-primary"></i> Panel de Coordinación</h2>
+    <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
+</div>
+
+<div class="row mb-4 g-3">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-warning">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <div>
+                <div class="stat-card-value">@ViewBag.PendientesCount</div>
+                <div class="stat-card-label">Pendientes de Revisión</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-success">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div>
+                <div class="stat-card-value">@ViewBag.RevisadasCount</div>
+                <div class="stat-card-label">Entregas Aprobadas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-danger">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div>
+                <div class="stat-card-value">@ViewBag.RechazadasCount</div>
+                <div class="stat-card-label">Entregas Rechazadas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-primary">
+                <i class="fas fa-book"></i>
+            </div>
+            <div>
+                <div class="stat-card-value">@ViewBag.TotalMaterias</div>
+                <div class="stat-card-label">Materias Activas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="action-card">
+            <div class="icon-badge icon-badge-lg icon-badge-primary">
+                <i class="fas fa-book"></i>
+            </div>
+            <h5 class="action-card-title">Gestión de Contenido</h5>
+            <p class="action-card-text">Crear y editar materias, unidades y entregables de inducción.</p>
+            <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-primary">
+                Ir a Gestión <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="action-card">
+            <div class="icon-badge icon-badge-lg icon-badge-warning">
+                <i class="fas fa-clipboard-check"></i>
+            </div>
+            <h5 class="action-card-title">Calificar Entregables</h5>
+            <p class="action-card-text">Revisar archivos entregados por aspirantes y asignar calificaciones.</p>
+            @if ((int)(ViewBag.PendientesCount ?? 0) > 0)
+            {
+                <span class="badge bg-danger align-self-start mb-1">@ViewBag.PendientesCount pendientes</span>
+            }
+            <a href="@Url.Action("RevisarEntregas", "Coordinador")" class="btn btn-warning">
+                Ir a Revisión <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="action-card">
+            <div class="icon-badge icon-badge-lg icon-badge-info">
+                <i class="fas fa-list-check"></i>
+            </div>
+            <h5 class="action-card-title">Calificar Unidades</h5>
+            <p class="action-card-text">Revisar unidades marcadas como entregadas por los aspirantes.</p>
+            @if ((int)(ViewBag.ProgresoPendienteCount ?? 0) > 0)
+            {
+                <span class="badge bg-danger align-self-start mb-1">@ViewBag.ProgresoPendienteCount pendientes</span>
+            }
+            <a href="@Url.Action("RevisarProgreso", "Coordinador")" class="btn btn-info text-white">
+                Ir a Revisión <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</div>

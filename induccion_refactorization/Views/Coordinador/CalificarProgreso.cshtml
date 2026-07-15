@@ -1,0 +1,64 @@
+@model induccion_refactorization.Models.Ind_ProgresoAspirante
+@{
+    ViewBag.Title = "Calificar Unidad";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="mb-4">
+            <a href="@Url.Action("RevisarProgreso", "Coordinador")" class="btn btn-link ps-0">
+                <i class="fas fa-arrow-left"></i> Volver a Unidades Pendientes
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-3">
+                <div class="icon-badge icon-badge-primary">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h5 class="mb-0">Calificar Unidad</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-4">
+                    <dt class="col-sm-3 text-muted">Aspirante</dt>
+                    <dd class="col-sm-9">@(Model.Aspirante?.Usuario?.NombreCompleto)</dd>
+
+                    <dt class="col-sm-3 text-muted">Materia</dt>
+                    <dd class="col-sm-9">@(Model.Ind_Unidad?.Ind_Materia?.Nombre)</dd>
+
+                    <dt class="col-sm-3 text-muted">Unidad</dt>
+                    <dd class="col-sm-9">@(Model.Ind_Unidad?.Nombre)</dd>
+
+                    <dt class="col-sm-3 text-muted">Fecha de Entrega</dt>
+                    <dd class="col-sm-9">@(Model.FechaEnvio?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</dd>
+                </dl>
+
+                <hr />
+
+                @using (Html.BeginForm("CalificarProgreso", "Coordinador", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="progresoId" value="@Model.ProgresoID" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Calificación (0-100)</label>
+                            <input type="number" name="calificacion" class="form-control" step="0.01" min="0" max="100" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Comentarios</label>
+                        <textarea name="comentariosEvaluador" class="form-control" rows="4" placeholder="Retroalimentación para el aspirante..."></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check"></i> Guardar Calificación
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,54 @@
+@model induccion_refactorization.Models.Ind_Unidad
+@{
+    ViewBag.Title = "Crear Nueva Unidad";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Crear Nueva Unidad</h4>
+                    <small class="text-muted">Materia: @ViewBag.MateriaNombre</small>
+                </div>
+                <div class="card-body">
+                    @using (Html.BeginForm("CreateUnidad", "InductionMaintenance", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.HiddenFor(model => model.MateriaID)
+
+                        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+                        <div class="form-group">
+                            @Html.LabelFor(model => model.Nombre, new { @class = "control-label" })
+                            @Html.TextBoxFor(model => model.Nombre, new { @class = "form-control", placeholder = "Ej: Historia y Filosofía Institucional" })
+                            @Html.ValidationMessageFor(model => model.Nombre, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="form-group">
+                            @Html.LabelFor(model => model.Orden, "Número de Orden", new { @class = "control-label" })
+                            @Html.TextBoxFor(model => model.Orden, new { @class = "form-control", type = "number", min = "1", value = ViewBag.NextOrden })
+                            @Html.ValidationMessageFor(model => model.Orden, "", new { @class = "text-danger" })
+                            <small class="form-text text-muted">Orden en que aparecerá la unidad (1, 2, 3...)</small>
+                        </div>
+
+                        <hr />
+
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("ManageUnidades", new { id = Model.MateriaID })" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Unidad
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}

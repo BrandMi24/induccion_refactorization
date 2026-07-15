@@ -1,0 +1,77 @@
+@model induccion_refactorization.Models.Ind_Submision
+@{
+    ViewBag.Title = "Calificar Entrega";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="mb-4">
+            <a href="@Url.Action("RevisarEntregas", "Coordinador")" class="btn btn-link ps-0">
+                <i class="fas fa-arrow-left"></i> Volver a Entregas Pendientes
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-3">
+                <div class="icon-badge icon-badge-primary">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h4 class="mb-0">Calificar Entrega</h4>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-4">
+                    <dt class="col-sm-3 text-muted">Aspirante</dt>
+                    <dd class="col-sm-9">@(Model.Aspirante?.Usuario?.NombreCompleto)</dd>
+
+                    <dt class="col-sm-3 text-muted">Materia</dt>
+                    <dd class="col-sm-9">@(Model.Ind_Entregable?.Ind_Unidad?.Ind_Materia?.Nombre)</dd>
+
+                    <dt class="col-sm-3 text-muted">Entregable</dt>
+                    <dd class="col-sm-9">@(Model.Ind_Entregable?.Titulo)</dd>
+
+                    <dt class="col-sm-3 text-muted">Fecha de Envío</dt>
+                    <dd class="col-sm-9">@Model.FechaEnvio.ToString("dd/MM/yyyy HH:mm")</dd>
+
+                    <dt class="col-sm-3 text-muted">Archivo</dt>
+                    <dd class="col-sm-9">
+                        <a href="@Url.Action("DownloadSubmission", new { id = Model.SubmisionID })" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-download"></i> Descargar Archivo
+                        </a>
+                    </dd>
+                </dl>
+
+                <hr />
+
+                @using (Html.BeginForm("Calificar", "Coordinador", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="submisionId" value="@Model.SubmisionID" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Calificación (0-100)</label>
+                            <input type="number" name="calificacion" class="form-control" step="0.01" min="0" max="100" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Comentarios</label>
+                        <textarea name="comentarioRevisor" class="form-control" rows="4" placeholder="Retroalimentación para el aspirante..."></textarea>
+                    </div>
+
+                    <hr />
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" name="estado" value="Rechazado" class="btn btn-outline-danger"
+                                onclick="return confirm('¿Rechazar esta entrega? El aspirante deberá volver a enviarla.');">
+                            <i class="fas fa-times"></i> Rechazar
+                        </button>
+                        <button type="submit" name="estado" value="Revisado" class="btn btn-success">
+                            <i class="fas fa-check"></i> Aprobar y Calificar
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

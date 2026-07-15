@@ -1,0 +1,174 @@
+@model induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_Materia>
+@{
+    ViewBag.Title = "Gestión de Contenido de Inducción";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1"><i class="fas fa-book text-primary"></i> Gestión de Contenido de Inducción</h2>
+        <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
+    </div>
+    <a href="@Url.Action("CreateMateria", "InductionMaintenance")" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Nueva Materia
+    </a>
+</div>
+
+<div class="row mb-4 g-3">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-primary"><i class="fas fa-book-open"></i></div>
+            <div>
+                <div class="stat-card-value">@ViewBag.TotalMaterias</div>
+                <div class="stat-card-label">Materias Activas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-info"><i class="fas fa-list"></i></div>
+            <div>
+                <div class="stat-card-value">@ViewBag.TotalUnidades</div>
+                <div class="stat-card-label">Unidades Totales</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-warning"><i class="fas fa-file-pdf"></i></div>
+            <div>
+                <div class="stat-card-value">@ViewBag.TotalMateriales</div>
+                <div class="stat-card-label">Recursos Disponibles</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-3">
+        @using (Html.BeginForm("Index", "InductionMaintenance", FormMethod.Get))
+        {
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small text-muted mb-1">Buscar</label>
+                    <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm"
+                           placeholder="Nombre de la materia..." />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Carrera</label>
+                    @Html.DropDownList("carreraId", (SelectList)ViewBag.CarrerasFiltro, "Todas", new { @class = "form-select form-select-sm" })
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">Periodo</label>
+                    @Html.DropDownList("periodoId", (SelectList)ViewBag.PeriodosFiltro, "Todos", new { @class = "form-select form-select-sm" })
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-sm btn-outline-secondary" title="Limpiar filtros">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Materias de Inducción</h5>
+        <small class="text-muted">@Model.TotalCount resultado(s)</small>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Items.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Carrera</th>
+                            <th>Periodo</th>
+                            <th>Unidades</th>
+                            <th>Descripción</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var materia in Model.Items)
+                        {
+                            <tr>
+                                <td><strong>@materia.Nombre</strong></td>
+                                <td><span class="badge bg-info">@(materia.Carrera?.Nombre)</span></td>
+                                <td><span class="badge bg-secondary">@(materia.Periodo?.Nombre)</span></td>
+                                <td><span class="badge bg-primary">@materia.Ind_Unidades.Count</span></td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(materia.Descripcion))
+                                    {
+                                        <small>@(materia.Descripcion.Length > 80 ? materia.Descripcion.Substring(0, 80) + "..." : materia.Descripcion)</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">Sin descripción</small>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <a href="@Url.Action("ManageUnidades", new { id = materia.MateriaID })"
+                                       class="btn btn-sm btn-primary"
+                                       title="Gestionar Unidades">
+                                        <i class="fas fa-list"></i> Unidades
+                                    </a>
+                                    <a href="@Url.Action("EditMateria", new { id = materia.MateriaID })"
+                                       class="btn btn-sm btn-outline-secondary"
+                                       title="Editar Materia">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    @using (Html.BeginForm("DeleteMateria", "InductionMaintenance", new { id = materia.MateriaID }, FormMethod.Post, new { @class = "d-inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-danger"
+                                                title="Desactivar Materia"
+                                                onclick="return confirm('¿Está seguro de desactivar esta materia?');">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
+            {
+                PageNumber = Model.PageNumber,
+                TotalPages = Model.TotalPages,
+                Action = "Index",
+                Controller = "InductionMaintenance",
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { search = ViewBag.Search, carreraId = ViewBag.CarreraId, periodoId = ViewBag.PeriodoId })
+            })
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon-badge icon-badge-lg icon-badge-info">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="empty-state-title">No se encontraron materias</div>
+                <p class="mb-0">
+                    <a href="@Url.Action("CreateMateria")">Crear la primera materia</a>
+                </p>
+            </div>
+        }
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function() {
+            setTimeout(function() {
+                $('.alert').fadeOut('slow');
+            }, 5000);
+        });
+    </script>
+}

@@ -1,0 +1,179 @@
+@model IEnumerable<induccion_refactorization.Models.Ind_Unidad>
+@{
+    ViewBag.Title = "Gestionar Unidades";
+}
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-link">
+                <i class="fas fa-arrow-left"></i> Volver a Materias
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="fas fa-list"></i> Gestionar Unidades</h2>
+                    <p class="text-muted">Materia: <strong>@ViewBag.MateriaNombre</strong></p>
+                </div>
+                <div>
+                    <a href="@Url.Action("CreateUnidad", "InductionMaintenance", new { materiaId = ViewBag.MateriaID ?? Model.FirstOrDefault()?.MateriaID })" 
+                       class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nueva Unidad
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        foreach (var unidad in Model)
+        {
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-ol"></i>
+                        Unidad @unidad.Orden: @unidad.Nombre
+                    </h5>
+                    <div>
+                        <a href="@Url.Action("CreateMaterial", "InductionMaintenance", new { unidadId = unidad.UnidadID })"
+                           class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus"></i> Agregar Material
+                        </a>
+                        <a href="@Url.Action("CreateEntregable", "InductionMaintenance", new { unidadId = unidad.UnidadID })"
+                           class="btn btn-sm btn-warning">
+                            <i class="fas fa-file-upload"></i> Agregar Entregable
+                        </a>
+                        @using (Html.BeginForm("DeleteUnidad", "InductionMaintenance", new { id = unidad.UnidadID }, FormMethod.Post, new { @class = "d-inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" 
+                                    class="btn btn-sm btn-danger" 
+                                    onclick="return confirm('¿Eliminar esta unidad y todos sus materiales?');">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (unidad.Ind_Materiales != null && unidad.Ind_Materiales.Any())
+                    {
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                    <th>URL</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var material in unidad.Ind_Materiales)
+                                {
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-file"></i>
+                                            @material.Nombre
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">@material.TipoRecurso</span>
+                                        </td>
+                                        <td>
+                                            <a href="@material.RutaURL" target="_blank" class="text-truncate d-inline-block" style="max-width: 300px;">
+                                                @material.RutaURL
+                                            </a>
+                                        </td>
+                                        <td class="text-center">
+                                            @using (Html.BeginForm("DeleteMaterial", "InductionMaintenance", new { id = material.MaterialID }, FormMethod.Post, new { @class = "d-inline" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" 
+                                                        class="btn btn-sm btn-danger" 
+                                                        onclick="return confirm('¿Eliminar este material?');">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-info-circle"></i>
+                            No hay materiales en esta unidad.
+                            <a href="@Url.Action("CreateMaterial", new { unidadId = unidad.UnidadID })">Agregar el primero</a>
+                        </p>
+                    }
+
+                    <hr />
+                    <h6><i class="fas fa-file-upload"></i> Entregables</h6>
+                    @{
+                        var entregablesActivos = unidad.Ind_Entregables?.Where(e => e.Activo).ToList();
+                    }
+                    @if (entregablesActivos != null && entregablesActivos.Any())
+                    {
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Fecha Límite</th>
+                                    <th>Ponderación</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entregable in entregablesActivos)
+                                {
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-file-alt"></i>
+                                            @entregable.Titulo
+                                        </td>
+                                        <td>
+                                            @(entregable.FechaLimite.HasValue ? entregable.FechaLimite.Value.ToString("dd/MM/yyyy") : "Sin límite")
+                                        </td>
+                                        <td>@entregable.PonderacionMax.ToString("F2")</td>
+                                        <td class="text-center">
+                                            @using (Html.BeginForm("DeleteEntregable", "InductionMaintenance", new { id = entregable.EntregableID }, FormMethod.Post, new { @class = "d-inline" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-danger"
+                                                        onclick="return confirm('¿Eliminar este entregable?');">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-info-circle"></i>
+                            No hay entregables en esta unidad.
+                            <a href="@Url.Action("CreateEntregable", new { unidadId = unidad.UnidadID })">Agregar el primero</a>
+                        </p>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle"></i>
+            No hay unidades creadas para esta materia.
+            <a href="@Url.Action("CreateUnidad", new { materiaId = ViewBag.MateriaID })" class="alert-link">Crear la primera unidad</a>
+        </div>
+    }
+</div>

@@ -1,0 +1,90 @@
+@{
+    ViewBag.Title = "Permisos por Rol";
+}
+
+<div class="mb-4">
+    <a href="@Url.Action("Index", "Admin")" class="btn btn-link ps-0">
+        <i class="fas fa-arrow-left"></i> Volver al Panel
+    </a>
+    <h2 class="mb-1"><i class="fas fa-shield-alt text-primary"></i> Permisos por Rol</h2>
+    <p class="text-muted mb-0">Referencia de lo que cada rol puede ver y hacer actualmente en el sistema.</p>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <div class="icon-badge icon-badge-sm icon-badge-primary"><i class="fas fa-user-shield"></i></div>
+                <strong>Administrador</strong>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item px-0">Panel de administración</li>
+                    <li class="list-group-item px-0">Gestión de contenido (materias, unidades, entregables)</li>
+                    <li class="list-group-item px-0">Gestión de usuarios (crear, editar, activar/desactivar, cambiar rol)</li>
+                    <li class="list-group-item px-0">Editar su propio perfil</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <div class="icon-badge icon-badge-sm icon-badge-primary"><i class="fas fa-user-tie"></i></div>
+                <strong>Director</strong>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item px-0">Panel de dirección (solo lectura)</li>
+                    <li class="list-group-item px-0">Estadísticas generales: aspirantes, materias, entregables</li>
+                    <li class="list-group-item px-0">Estado de entregas (pendientes, revisadas, rechazadas)</li>
+                    <li class="list-group-item px-0">Progreso por materia</li>
+                    <li class="list-group-item px-0">Editar su propio perfil</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <div class="icon-badge icon-badge-sm icon-badge-primary"><i class="fas fa-users-cog"></i></div>
+                <strong>Coordinador</strong>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item px-0">Panel de coordinación</li>
+                    <li class="list-group-item px-0">Gestión de contenido (materias, unidades, entregables)</li>
+                    <li class="list-group-item px-0">Revisar y calificar entregables (archivos subidos)</li>
+                    <li class="list-group-item px-0">Revisar y calificar unidades marcadas como entregadas</li>
+                    <li class="list-group-item px-0">Editar su propio perfil</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <div class="icon-badge icon-badge-sm icon-badge-primary"><i class="fas fa-graduation-cap"></i></div>
+                <strong>Aspirante</strong>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item px-0">Ver sus materias asignadas y progreso</li>
+                    <li class="list-group-item px-0">Ver contenido de cada unidad (materiales, entregables)</li>
+                    <li class="list-group-item px-0">Marcar unidades como entregadas</li>
+                    <li class="list-group-item px-0">Subir archivos para entregables</li>
+                    <li class="list-group-item px-0">Editar su propio perfil</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mt-4">
+    <i class="fas fa-info-circle"></i>
+    Esta página es solo de referencia: los permisos se definen actualmente en el código de cada controlador
+    y no pueden modificarse desde aquí.
+</div>

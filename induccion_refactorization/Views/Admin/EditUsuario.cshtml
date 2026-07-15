@@ -1,0 +1,97 @@
+@model induccion_refactorization.Models.Usuario
+@{
+    ViewBag.Title = "Editar Usuario";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-user-edit"></i> Editar Usuario</h4>
+                </div>
+                <div class="card-body">
+                    @using (Html.BeginForm("EditUsuario", "Admin", FormMethod.Post, new { @class = "usuario-form" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.HiddenFor(model => model.UsuarioID)
+                        @Html.HiddenFor(model => model.Activo)
+                        @Html.HiddenFor(model => model.FechaRegistro)
+
+                        <div class="form-horizontal">
+                            @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    @Html.LabelFor(model => model.Nombre, new { @class = "control-label" })
+                                    @Html.TextBoxFor(model => model.Nombre, new { @class = "form-control" })
+                                    @Html.ValidationMessageFor(model => model.Nombre, "", new { @class = "text-danger" })
+                                </div>
+                                <div class="col-md-3 form-group">
+                                    @Html.LabelFor(model => model.ApellidoPaterno, "Apellido Paterno", new { @class = "control-label" })
+                                    @Html.TextBoxFor(model => model.ApellidoPaterno, new { @class = "form-control" })
+                                    @Html.ValidationMessageFor(model => model.ApellidoPaterno, "", new { @class = "text-danger" })
+                                </div>
+                                <div class="col-md-3 form-group">
+                                    @Html.LabelFor(model => model.ApellidoMaterno, "Apellido Materno", new { @class = "control-label" })
+                                    @Html.TextBoxFor(model => model.ApellidoMaterno, new { @class = "form-control" })
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                @Html.LabelFor(model => model.NombreUsuario, "Nombre de Usuario", new { @class = "control-label" })
+                                @Html.TextBoxFor(model => model.NombreUsuario, new { @class = "form-control" })
+                                @Html.ValidationMessageFor(model => model.NombreUsuario, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="form-group">
+                                @Html.LabelFor(model => model.CorreoElectronico, "Correo Electrónico", new { @class = "control-label" })
+                                @Html.TextBoxFor(model => model.CorreoElectronico, new { @class = "form-control", type = "email" })
+                                @Html.ValidationMessageFor(model => model.CorreoElectronico, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="form-group">
+                                <label class="control-label">Nueva Contraseña</label>
+                                @Html.PasswordFor(model => model.Contrasena, new { @class = "form-control", placeholder = "Dejar en blanco para no cambiar" })
+                                <small class="form-text text-muted">Solo complete este campo si desea cambiar la contraseña.</small>
+                            </div>
+
+                            <div class="form-group">
+                                @Html.LabelFor(model => model.RolID, "Rol", new { @class = "control-label" })
+                                @Html.DropDownList("RolID", (SelectList)ViewBag.RolID, new { @class = "form-control" })
+                                @Html.ValidationMessageFor(model => model.RolID, "", new { @class = "text-danger" })
+                            </div>
+
+                            <hr class="my-4" />
+
+                            <div class="form-group">
+                                <div class="d-flex justify-content-between">
+                                    <a href="@Url.Action("GestionUsuarios", "Admin")" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left"></i> Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Guardar Cambios
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+
+    <script>
+        $(document).ready(function() {
+            $('.usuario-form').on('submit', function() {
+                var $btn = $(this).find('button[type="submit"]');
+                $btn.prop('disabled', true);
+                $btn.html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+            });
+        });
+    </script>
+}

@@ -1,0 +1,79 @@
+@using induccion_refactorization.Models
+@{
+    ViewBag.Title = "Subir Entregable";
+    var entregable = ViewBag.Entregable as Ind_Entregable;
+    var submisionExistente = ViewBag.SubmisionExistente as Ind_Submision;
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="mb-3">
+            <a href="@Url.Action("MateriaDetails", "Aspirante", new { id = entregable?.Ind_Unidad?.MateriaID })" class="btn btn-link ps-0">
+                <i class="fas fa-arrow-left"></i> Volver a la Materia
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-file-upload"></i> @(entregable?.Titulo)</h5>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(entregable?.Instrucciones))
+                {
+                    <p class="text-muted">@entregable.Instrucciones</p>
+                }
+
+                @if (entregable?.FechaLimite.HasValue == true)
+                {
+                    <p class="small">
+                        <strong>Fecha límite:</strong> @entregable.FechaLimite.Value.ToString("dd/MM/yyyy")
+                    </p>
+                }
+
+                @if (submisionExistente != null)
+                {
+                    <div class="alert alert-info small">
+                        <i class="fas fa-info-circle"></i>
+                        Ya enviaste un archivo el @submisionExistente.FechaEnvio.ToString("dd/MM/yyyy HH:mm").
+                        Estado actual: <strong>@submisionExistente.Estado</strong>.
+                        @if (submisionExistente.Calificacion.HasValue)
+                        {
+                            <text> Calificación: <strong>@submisionExistente.Calificacion.Value.ToString("F2")</strong></text>
+                        }
+                        <br />
+                        Subir un nuevo archivo reemplazará el anterior y reiniciará la revisión.
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(submisionExistente.ComentarioRevisor))
+                    {
+                        <div class="alert alert-light small">
+                            <strong>Comentarios del revisor:</strong>
+                            <br />
+                            <em>@submisionExistente.ComentarioRevisor</em>
+                        </div>
+                    }
+                }
+
+                @using (Html.BeginForm("UploadEntregable", "Aspirante", FormMethod.Post, new { enctype = "multipart/form-data" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", entregable?.EntregableID)
+
+                    <div class="mb-3">
+                        <label class="form-label">Archivo</label>
+                        <input type="file" name="archivo" class="form-control" required />
+                        <small class="form-text text-muted">
+                            Formatos aceptados: PDF, DOCX, XLSX, JPG, PNG. Tamaño máximo: 10 MB.
+                        </small>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Enviar Archivo
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,70 @@
+@model induccion_refactorization.Models.Ind_Material
+@{
+    ViewBag.Title = "Agregar Material";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Agregar Material de Aprendizaje</h4>
+                    <small class="text-muted">
+                        Materia: @ViewBag.MateriaNombre | Unidad: @ViewBag.UnidadNombre
+                    </small>
+                </div>
+                <div class="card-body">
+                    @using (Html.BeginForm("CreateMaterial", "InductionMaintenance", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.HiddenFor(model => model.UnidadID)
+
+                        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+                        <div class="form-group">
+                            @Html.LabelFor(model => model.Nombre, new { @class = "control-label" })
+                            @Html.TextBoxFor(model => model.Nombre, new { @class = "form-control", placeholder = "Ej: Historia de la UTTN - Documento Oficial" })
+                            @Html.ValidationMessageFor(model => model.Nombre, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="form-group">
+                            @Html.LabelFor(model => model.TipoRecurso, "Tipo de Recurso", new { @class = "control-label" })
+                            @Html.DropDownListFor(model => model.TipoRecurso, 
+                                new SelectList(new[] { "PDF", "Video", "Enlace", "Documento" }), 
+                                "-- Seleccione tipo --", 
+                                new { @class = "form-control" })
+                            @Html.ValidationMessageFor(model => model.TipoRecurso, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="form-group">
+                            @Html.LabelFor(model => model.RutaURL, "URL del Recurso", new { @class = "control-label" })
+                            @Html.TextBoxFor(model => model.RutaURL, new { @class = "form-control", placeholder = "https://www.uttn.edu.mx/docs/archivo.pdf" })
+                            @Html.ValidationMessageFor(model => model.RutaURL, "", new { @class = "text-danger" })
+                            <small class="form-text text-muted">URL completa del recurso (debe comenzar con http:// o https://)</small>
+                        </div>
+
+                        <hr />
+
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("ManageUnidades", new { id = ViewBag.MateriaID })" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Material
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-3">
+                <i class="fas fa-info-circle"></i>
+                <strong>Nota:</strong> Los aspirantes podrán acceder a estos recursos desde su panel de cursos.
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}

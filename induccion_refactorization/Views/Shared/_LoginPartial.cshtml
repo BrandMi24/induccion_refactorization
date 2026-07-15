@@ -1,0 +1,84 @@
+@if (Request.IsAuthenticated)
+{
+    var rolID = Session["RolID"] != null ? (int)Session["RolID"] : 0;
+    var currentController = (string)ViewContext.RouteData.Values["controller"];
+
+    Func<string, bool> isActive = c => string.Equals(currentController, c, System.StringComparison.OrdinalIgnoreCase);
+
+    <ul class="navbar-nav navbar-nav-center">
+        @if (rolID == 1)
+        {
+            <li class="nav-item"><a class="nav-link @(isActive("Admin") ? "active" : "")" href="@Url.Action("Index", "Admin")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
+            <li class="nav-item"><a class="nav-link @(isActive("InductionMaintenance") ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
+            <li class="nav-item"><a class="nav-link @(isActive("Admin") ? "active" : "")" href="@Url.Action("GestionUsuarios", "Admin")"><i class="fas fa-user-cog"></i> Gestión de Usuarios</a></li>
+        }
+        else if (rolID == 2)
+        {
+            <li class="nav-item"><a class="nav-link @(isActive("Director") ? "active" : "")" href="@Url.Action("Index", "Director")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
+        }
+        else if (rolID == 3)
+        {
+            <li class="nav-item"><a class="nav-link @(isActive("Coordinador") ? "active" : "")" href="@Url.Action("Index", "Coordinador")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
+            <li class="nav-item"><a class="nav-link @(isActive("InductionMaintenance") ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
+            <li class="nav-item"><a class="nav-link @(isActive("Coordinador") ? "active" : "")" href="@Url.Action("RevisarEntregas", "Coordinador")"><i class="fas fa-clipboard-check"></i> Revisar Entregas</a></li>
+            <li class="nav-item"><a class="nav-link @(isActive("Coordinador") ? "active" : "")" href="@Url.Action("RevisarProgreso", "Coordinador")"><i class="fas fa-list-check"></i> Revisar Unidades</a></li>
+        }
+        else if (rolID == 4)
+        {
+            <li class="nav-item"><a class="nav-link @(isActive("Aspirante") ? "active" : "")" href="@Url.Action("Index", "Aspirante")"><i class="fas fa-graduation-cap"></i> Mi Espacio</a></li>
+        }
+    </ul>
+
+    <ul class="navbar-nav ms-auto">
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle @(isActive("Perfil") ? "active" : "")"
+               href="#"
+               id="userDropdown"
+               role="button"
+               data-bs-toggle="dropdown"
+               aria-haspopup="true"
+               aria-expanded="false">
+                <i class="fas fa-user-circle"></i>
+                @(Session["NombreCompleto"] ?? "Usuario")
+            </a>
+
+            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                <div class="dropdown-item-text">
+                    <small class="text-muted">
+                        <i class="fas fa-envelope"></i>
+                        @(Session["Email"] ?? "usuario@ejemplo.com")
+                    </small>
+                </div>
+
+                <div class="dropdown-divider"></div>
+
+                <a class="dropdown-item" href="@Url.Action("Index", "Perfil")">
+                    <i class="fas fa-user-circle"></i>
+                    Mi Perfil
+                </a>
+
+                <div class="dropdown-divider"></div>
+
+                @using (Html.BeginForm("Logout", "Account", FormMethod.Post, new { id = "logoutForm", @class = "d-inline" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <a href="javascript:document.getElementById('logoutForm').submit()"
+                       class="dropdown-item text-danger">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Cerrar Sesión
+                    </a>
+                }
+            </div>
+        </li>
+    </ul>
+}
+else
+{
+    <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+            <a class="btn btn-link" href="@Url.Action("Login", "Account")">
+                Acceder
+            </a>
+        </li>
+    </ul>
+}

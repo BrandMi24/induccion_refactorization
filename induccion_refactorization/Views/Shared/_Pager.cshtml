@@ -1,0 +1,35 @@
+@model induccion_refactorization.ViewModels.PagerViewModel
+@{
+    if (Model == null || Model.TotalPages <= 1)
+    {
+        return;
+    }
+
+    Func<int, System.Web.Routing.RouteValueDictionary> routeFor = page =>
+    {
+        var rv = new System.Web.Routing.RouteValueDictionary(Model.RouteValues) { ["page"] = page };
+        return rv;
+    };
+}
+
+<nav aria-label="Paginación" class="d-flex justify-content-between align-items-center px-3 py-2">
+    <small class="text-muted">Página @Model.PageNumber de @Model.TotalPages</small>
+    <ul class="pagination pagination-sm mb-0">
+        <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+            <a class="page-link" href="@Url.Action(Model.Action, Model.Controller, routeFor(Model.PageNumber - 1))">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+        </li>
+        @for (var p = 1; p <= Model.TotalPages; p++)
+        {
+            <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                <a class="page-link" href="@Url.Action(Model.Action, Model.Controller, routeFor(p))">@p</a>
+            </li>
+        }
+        <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+            <a class="page-link" href="@Url.Action(Model.Action, Model.Controller, routeFor(Model.PageNumber + 1))">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+    </ul>
+</nav>

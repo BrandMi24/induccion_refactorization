@@ -1,0 +1,116 @@
+@model induccion_refactorization.ViewModels.DirectorDashboardViewModel
+@{
+    ViewBag.Title = "Panel de Dirección";
+}
+
+<div class="mb-4">
+    <h2 class="mb-1"><i class="fas fa-user-tie text-primary"></i> Panel de Dirección</h2>
+    <p class="text-muted mb-0">Bienvenido, <strong>@Model.NombreCompleto</strong></p>
+</div>
+
+<div class="row mb-4 g-3">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-primary"><i class="fas fa-user-graduate"></i></div>
+            <div>
+                <div class="stat-card-value">@Model.TotalAspirantes</div>
+                <div class="stat-card-label">Aspirantes</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-primary"><i class="fas fa-book"></i></div>
+            <div>
+                <div class="stat-card-value">@Model.TotalMaterias</div>
+                <div class="stat-card-label">Materias Activas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-primary"><i class="fas fa-file-upload"></i></div>
+            <div>
+                <div class="stat-card-value">@Model.TotalEntregables</div>
+                <div class="stat-card-label">Entregables Activos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-success"><i class="fas fa-star"></i></div>
+            <div>
+                <div class="stat-card-value">@(Model.PromedioGeneral?.ToString("F2") ?? "N/A")</div>
+                <div class="stat-card-label">Calificación Promedio</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Estado de Entregas</div>
+    <div class="card-body">
+        <div class="row g-3 text-center">
+            <div class="col-md-4">
+                <div class="icon-badge icon-badge-warning mx-auto mb-2"><i class="fas fa-clock"></i></div>
+                <div class="stat-card-value">@Model.PendientesCount</div>
+                <div class="stat-card-label">Pendientes</div>
+            </div>
+            <div class="col-md-4">
+                <div class="icon-badge icon-badge-success mx-auto mb-2"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-card-value">@Model.RevisadasCount</div>
+                <div class="stat-card-label">Revisadas</div>
+            </div>
+            <div class="col-md-4">
+                <div class="icon-badge icon-badge-danger mx-auto mb-2"><i class="fas fa-times-circle"></i></div>
+                <div class="stat-card-value">@Model.RechazadasCount</div>
+                <div class="stat-card-label">Rechazadas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Progreso por Materia</div>
+    <div class="card-body p-0">
+        @if (Model.MateriasConProgreso.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th>Materia</th>
+                            <th style="width: 55%;">Progreso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var materia in Model.MateriasConProgreso)
+                        {
+                            <tr>
+                                <td>@materia.Nombre</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" role="progressbar" style="width: @(materia.Porcentaje)%;"></div>
+                                        </div>
+                                        <small class="text-muted">@materia.Porcentaje% (@materia.Completados/@materia.Total)</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon-badge icon-badge-lg icon-badge-info">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="empty-state-title">Sin datos todavía</div>
+                <p class="mb-0">Aún no hay progreso registrado.</p>
+            </div>
+        }
+    </div>
+</div>

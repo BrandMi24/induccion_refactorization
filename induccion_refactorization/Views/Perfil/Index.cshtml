@@ -1,0 +1,46 @@
+@model induccion_refactorization.Models.Usuario
+@{
+    ViewBag.Title = "Mi Perfil";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="mb-3">
+            <h4 class="mb-0"><i class="fas fa-user-circle text-primary"></i> Mi Perfil</h4>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="icon-badge icon-badge-lg icon-badge-primary">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <div class="fw-semibold fs-5">@Model.NombreCompleto</div>
+                        <span class="badge bg-info">@(Model.Role?.Nombre)</span>
+                    </div>
+                </div>
+
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted">Usuario</dt>
+                    <dd class="col-sm-8">@Model.NombreUsuario</dd>
+
+                    <dt class="col-sm-4 text-muted">Correo electrónico</dt>
+                    <dd class="col-sm-8">@Model.CorreoElectronico</dd>
+
+                    <dt class="col-sm-4 text-muted">Teléfono</dt>
+                    <dd class="col-sm-8">@(string.IsNullOrEmpty(Model.Telefono) ? "Sin registrar" : Model.Telefono)</dd>
+
+                    <dt class="col-sm-4 text-muted">Miembro desde</dt>
+                    <dd class="col-sm-8">@(Model.FechaRegistro?.ToString("dd/MM/yyyy") ?? "N/A")</dd>
+                </dl>
+
+                <hr />
+
+                <a href="@Url.Action("Edit", "Perfil")" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Editar Perfil
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

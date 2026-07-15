@@ -1,0 +1,90 @@
+@model induccion_refactorization.Models.Ind_Materia
+@{
+    ViewBag.Title = "Crear Nueva Materia de Inducción";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Crear Nueva Materia de Inducción</h4>
+                </div>
+                <div class="card-body">
+                    @using (Html.BeginForm("CreateMateria", "InductionMaintenance", FormMethod.Post, new { @class = "materia-form" }))
+                    {
+                        @Html.AntiForgeryToken()
+
+                        <div class="form-horizontal">
+                            @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+                            <div class="form-group">
+                                @Html.LabelFor(model => model.Nombre, new { @class = "control-label" })
+                                @Html.TextBoxFor(model => model.Nombre, new { @class = "form-control", placeholder = "Ej: Introducción a la UTTN" })
+                                @Html.ValidationMessageFor(model => model.Nombre, "", new { @class = "text-danger" })
+                                <small class="form-text text-muted">Nombre descriptivo de la materia de inducción</small>
+                            </div>
+
+                            <div class="form-group">
+                                @Html.LabelFor(model => model.Descripcion, new { @class = "control-label" })
+                                @Html.TextAreaFor(model => model.Descripcion, new { @class = "form-control", rows = 4, placeholder = "Describe los objetivos y contenido de esta materia..." })
+                                @Html.ValidationMessageFor(model => model.Descripcion, "", new { @class = "text-danger" })
+                                <small class="form-text text-muted">Información detallada sobre qué aprenderán los aspirantes</small>
+                            </div>
+
+                            <div class="form-group">
+                                @Html.LabelFor(model => model.CarreraID, "Carrera", new { @class = "control-label" })
+                                @Html.DropDownList("CarreraID", (SelectList)ViewBag.CarreraID, "-- Seleccione una carrera --", new { @class = "form-control" })
+                                @Html.ValidationMessageFor(model => model.CarreraID, "", new { @class = "text-danger" })
+                                <small class="form-text text-muted">Carrera a la que pertenece esta materia</small>
+                            </div>
+
+                            <div class="form-group">
+                                @Html.LabelFor(model => model.PeriodoID, "Periodo", new { @class = "control-label" })
+                                @Html.DropDownList("PeriodoID", (SelectList)ViewBag.PeriodoID, "-- Seleccione un periodo --", new { @class = "form-control" })
+                                @Html.ValidationMessageFor(model => model.PeriodoID, "", new { @class = "text-danger" })
+                                <small class="form-text text-muted">Periodo académico en el que se imparte</small>
+                            </div>
+
+                            <hr class="my-4" />
+
+                            <div class="form-group">
+                                <div class="d-flex justify-content-between">
+                                    <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left"></i> Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Guardar Materia
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-4">
+                <i class="fas fa-lightbulb"></i>
+                <strong>Recordatorio:</strong> Después de crear la materia, podrás agregar Unidades y Materiales desde el panel de gestión.
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+    
+    <script>
+        $(document).ready(function() {
+            // Auto-focus on nombre input
+            $('#Nombre').focus();
+
+            // Form validation feedback
+            $('.materia-form').on('submit', function() {
+                var $btn = $(this).find('button[type="submit"]');
+                $btn.prop('disabled', true);
+                $btn.html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+            });
+        });
+    </script>
+}
