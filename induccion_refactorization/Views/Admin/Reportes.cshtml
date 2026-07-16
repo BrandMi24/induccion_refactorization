@@ -1,0 +1,197 @@
+@model induccion_refactorization.ViewModels.ReportesViewModel
+@{
+    ViewBag.Title = "Reportes";
+}
+
+<div class="mb-4">
+    <a href="@Url.Action("Index", "Admin")" class="btn btn-link ps-0">
+        <i class="fas fa-arrow-left"></i> Volver al Panel
+    </a>
+    <h2 class="mb-1"><i class="fas fa-chart-bar text-primary"></i> Reportes</h2>
+    <p class="text-muted mb-0">Estadísticas generales del sistema de inducción.</p>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Usuarios por Rol</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card">
+                    <div class="icon-badge icon-badge-primary"><i class="fas fa-user-shield"></i></div>
+                    <div>
+                        <div class="stat-card-value">@Model.TotalAdministradores</div>
+                        <div class="stat-card-label">Administradores</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card">
+                    <div class="icon-badge icon-badge-primary"><i class="fas fa-user-tie"></i></div>
+                    <div>
+                        <div class="stat-card-value">@Model.TotalDirectores</div>
+                        <div class="stat-card-label">Directores</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card">
+                    <div class="icon-badge icon-badge-primary"><i class="fas fa-users-cog"></i></div>
+                    <div>
+                        <div class="stat-card-value">@Model.TotalCoordinadores</div>
+                        <div class="stat-card-label">Coordinadores</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card">
+                    <div class="icon-badge icon-badge-primary"><i class="fas fa-user-graduate"></i></div>
+                    <div>
+                        <div class="stat-card-value">@Model.TotalAspirantes</div>
+                        <div class="stat-card-label">Aspirantes</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Contenido de Inducción</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="icon-badge icon-badge-info"><i class="fas fa-book"></i></div>
+                    <div>
+                        <div class="stat-card-value">@Model.TotalMaterias</div>
+                        <div class="stat-card-label">Materias Activas</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="icon-badge icon-badge-info"><i class="fas fa-list"></i></div>
+                    <div>
+                        <div class="stat-card-value">@Model.TotalUnidades</div>
+                        <div class="stat-card-label">Unidades</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="icon-badge icon-badge-info"><i class="fas fa-file-pdf"></i></div>
+                    <div>
+                        <div class="stat-card-value">@Model.TotalMateriales</div>
+                        <div class="stat-card-label">Materiales</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="icon-badge icon-badge-info"><i class="fas fa-file-upload"></i></div>
+                    <div>
+                        <div class="stat-card-value">@Model.TotalEntregables</div>
+                        <div class="stat-card-label">Entregables</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Entregables (Archivos) — Promedio: @(Model.PromedioEntregables?.ToString("F2") ?? "N/A")</div>
+            <div class="card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-4">
+                        <div class="icon-badge icon-badge-warning mx-auto mb-2"><i class="fas fa-clock"></i></div>
+                        <div class="stat-card-value">@Model.EntregasPendientes</div>
+                        <div class="stat-card-label">Pendientes</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="icon-badge icon-badge-success mx-auto mb-2"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-card-value">@Model.EntregasRevisadas</div>
+                        <div class="stat-card-label">Revisadas</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="icon-badge icon-badge-danger mx-auto mb-2"><i class="fas fa-times-circle"></i></div>
+                        <div class="stat-card-value">@Model.EntregasRechazadas</div>
+                        <div class="stat-card-label">Rechazadas</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Unidades — Promedio: @(Model.PromedioUnidades?.ToString("F2") ?? "N/A")</div>
+            <div class="card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-4">
+                        <div class="icon-badge icon-badge-info mx-auto mb-2"><i class="fas fa-tasks"></i></div>
+                        <div class="stat-card-value">@Model.UnidadesAsignadas</div>
+                        <div class="stat-card-label">Asignadas</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="icon-badge icon-badge-warning mx-auto mb-2"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="stat-card-value">@Model.UnidadesEntregadas</div>
+                        <div class="stat-card-label">Entregadas</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="icon-badge icon-badge-success mx-auto mb-2"><i class="fas fa-star"></i></div>
+                        <div class="stat-card-value">@Model.UnidadesCalificadas</div>
+                        <div class="stat-card-label">Calificadas</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Progreso por Materia</div>
+    <div class="card-body p-0">
+        @if (Model.MateriasConProgreso.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th>Materia</th>
+                            <th style="width: 55%;">Progreso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var materia in Model.MateriasConProgreso)
+                        {
+                            <tr>
+                                <td>@materia.Nombre</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" role="progressbar" style="width: @(materia.Porcentaje)%;"></div>
+                                        </div>
+                                        <small class="text-muted">@materia.Porcentaje% (@materia.Completados/@materia.Total)</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon-badge icon-badge-lg icon-badge-info">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="empty-state-title">Sin datos todavía</div>
+                <p class="mb-0">Aún no hay progreso registrado.</p>
+            </div>
+        }
+    </div>
+</div>

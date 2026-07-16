@@ -2,6 +2,7 @@ using System;
 using System.Data.Entity;
 using System.Linq;
 using System.Web.Mvc;
+using induccion_refactorization.Helpers;
 using induccion_refactorization.Models;
 
 namespace induccion_refactorization.Controllers
@@ -79,7 +80,7 @@ namespace induccion_refactorization.Controllers
 
                 if (!string.IsNullOrWhiteSpace(nuevaContrasena))
                 {
-                    usuario.Contrasena = nuevaContrasena;
+                    usuario.Contrasena = PasswordHasher.Hash(nuevaContrasena);
                 }
 
                 db.SaveChanges();

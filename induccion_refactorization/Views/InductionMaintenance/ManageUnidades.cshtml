@@ -33,6 +33,8 @@
     {
         foreach (var unidad in Model)
         {
+            var entregablesActivos = unidad.Ind_Entregables?.Where(e => e.Activo).ToList();
+
             <div class="card mb-3">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
@@ -52,7 +54,7 @@
                         {
                             @Html.AntiForgeryToken()
                             <button type="submit" 
-                                    class="btn btn-sm btn-danger" 
+                                    class="btn btn-sm btn-danger btn-icon" 
                                     onclick="return confirm('¿Eliminar esta unidad y todos sus materiales?');">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -92,7 +94,7 @@
                                             {
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" 
-                                                        class="btn btn-sm btn-danger" 
+                                                        class="btn btn-sm btn-danger btn-icon" 
                                                         onclick="return confirm('¿Eliminar este material?');">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
@@ -114,9 +116,6 @@
 
                     <hr />
                     <h6><i class="fas fa-file-upload"></i> Entregables</h6>
-                    @{
-                        var entregablesActivos = unidad.Ind_Entregables?.Where(e => e.Activo).ToList();
-                    }
                     @if (entregablesActivos != null && entregablesActivos.Any())
                     {
                         <table class="table table-sm table-hover">
@@ -145,7 +144,7 @@
                                             {
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit"
-                                                        class="btn btn-sm btn-danger"
+                                                        class="btn btn-sm btn-danger btn-icon"
                                                         onclick="return confirm('¿Eliminar este entregable?');">
                                                     <i class="fas fa-trash"></i>
                                                 </button>

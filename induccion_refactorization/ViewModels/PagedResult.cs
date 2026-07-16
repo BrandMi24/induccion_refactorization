@@ -9,6 +9,7 @@ namespace induccion_refactorization.ViewModels
     {
         public int PageNumber { get; set; }
         public int TotalPages { get; set; }
+        public int PageSize { get; set; }
         public string Action { get; set; }
         public string Controller { get; set; }
         public RouteValueDictionary RouteValues { get; set; } = new RouteValueDictionary();
@@ -27,8 +28,15 @@ namespace induccion_refactorization.ViewModels
 
         public static PagedResult<T> Create(IQueryable<T> source, int pageNumber, int pageSize)
         {
-            pageNumber = pageNumber < 1 ? 1 : pageNumber;
+            pageSize = pageSize < 1 ? 10 : pageSize;
             var totalCount = source.Count();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            pageNumber = pageNumber < 1 ? 1 : pageNumber;
+            if (totalPages > 0 && pageNumber > totalPages)
+            {
+                pageNumber = totalPages;
+            }
 
             var items = source
                 .Skip((pageNumber - 1) * pageSize)

@@ -6,6 +6,7 @@ using System.Net;
 using System.Web.Mvc;
 using induccion_refactorization.Filters;
 using induccion_refactorization.Models;
+using induccion_refactorization.ViewModels;
 
 namespace induccion_refactorization.Controllers
 {
@@ -31,17 +32,57 @@ namespace induccion_refactorization.Controllers
         }
 
         // GET: /Coordinador/RevisarProgreso
-        public ActionResult RevisarProgreso()
+        public ActionResult RevisarProgreso(string search, int? materiaId, string sortBy, string sortDir, int page = 1, int pageSize = 10)
         {
-            var progresos = db.Ind_ProgresoAspirante
+            var query = db.Ind_ProgresoAspirante
                 .Include(p => p.Aspirante.Usuario)
                 .Include(p => p.Ind_Unidad.Ind_Materia)
-                .Where(p => p.Estado == "Entregado")
-                .OrderBy(p => p.FechaEnvio)
-                .ToList();
+                .Where(p => p.Estado == "Entregado");
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(p =>
+                    p.Aspirante.Usuario.Nombre.ToLower().Contains(term) ||
+                    p.Aspirante.Usuario.ApellidoPaterno.ToLower().Contains(term) ||
+                    p.Ind_Unidad.Nombre.ToLower().Contains(term));
+            }
+
+            if (materiaId.HasValue)
+            {
+                query = query.Where(p => p.Ind_Unidad.MateriaID == materiaId.Value);
+            }
+
+            bool descending = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            switch (sortBy)
+            {
+                case "Aspirante":
+                    query = descending ? query.OrderByDescending(p => p.Aspirante.Usuario.Nombre) : query.OrderBy(p => p.Aspirante.Usuario.Nombre);
+                    break;
+                case "Materia":
+                    query = descending ? query.OrderByDescending(p => p.Ind_Unidad.Ind_Materia.Nombre) : query.OrderBy(p => p.Ind_Unidad.Ind_Materia.Nombre);
+                    break;
+                case "Unidad":
+                    query = descending ? query.OrderByDescending(p => p.Ind_Unidad.Nombre) : query.OrderBy(p => p.Ind_Unidad.Nombre);
+                    break;
+                case "Fecha":
+                    query = descending ? query.OrderByDescending(p => p.FechaEnvio) : query.OrderBy(p => p.FechaEnvio);
+                    break;
+                default:
+                    query = query.OrderBy(p => p.FechaEnvio);
+                    break;
+            }
+
+            var result = PagedResult<Ind_ProgresoAspirante>.Create(query, page, pageSize);
 
             ViewBag.NombreCompleto = Session["NombreCompleto"];
-            return View(progresos);
+            ViewBag.Search = search;
+            ViewBag.MateriaId = materiaId;
+            ViewBag.SortBy = sortBy;
+            ViewBag.SortDir = sortDir;
+            ViewBag.MateriasFiltro = new SelectList(db.Ind_Materias.Where(m => m.Activo), "MateriaID", "Nombre", materiaId);
+
+            return View(result);
         }
 
         // GET: /Coordinador/CalificarProgreso/5
@@ -97,17 +138,57 @@ namespace induccion_refactorization.Controllers
         }
 
         // GET: /Coordinador/RevisarEntregas
-        public ActionResult RevisarEntregas()
+        public ActionResult RevisarEntregas(string search, int? materiaId, string sortBy, string sortDir, int page = 1, int pageSize = 10)
         {
-            var submisiones = db.Ind_Submisiones
+            var query = db.Ind_Submisiones
                 .Include(s => s.Aspirante.Usuario)
                 .Include(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia)
-                .Where(s => s.Estado == "Pendiente")
-                .OrderBy(s => s.FechaEnvio)
-                .ToList();
+                .Where(s => s.Estado == "Pendiente");
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(s =>
+                    s.Aspirante.Usuario.Nombre.ToLower().Contains(term) ||
+                    s.Aspirante.Usuario.ApellidoPaterno.ToLower().Contains(term) ||
+                    s.Ind_Entregable.Titulo.ToLower().Contains(term));
+            }
+
+            if (materiaId.HasValue)
+            {
+                query = query.Where(s => s.Ind_Entregable.Ind_Unidad.MateriaID == materiaId.Value);
+            }
+
+            bool descending = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            switch (sortBy)
+            {
+                case "Aspirante":
+                    query = descending ? query.OrderByDescending(s => s.Aspirante.Usuario.Nombre) : query.OrderBy(s => s.Aspirante.Usuario.Nombre);
+                    break;
+                case "Materia":
+                    query = descending ? query.OrderByDescending(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia.Nombre) : query.OrderBy(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia.Nombre);
+                    break;
+                case "Entregable":
+                    query = descending ? query.OrderByDescending(s => s.Ind_Entregable.Titulo) : query.OrderBy(s => s.Ind_Entregable.Titulo);
+                    break;
+                case "Fecha":
+                    query = descending ? query.OrderByDescending(s => s.FechaEnvio) : query.OrderBy(s => s.FechaEnvio);
+                    break;
+                default:
+                    query = query.OrderBy(s => s.FechaEnvio);
+                    break;
+            }
+
+            var result = PagedResult<Ind_Submision>.Create(query, page, pageSize);
 
             ViewBag.NombreCompleto = Session["NombreCompleto"];
-            return View(submisiones);
+            ViewBag.Search = search;
+            ViewBag.MateriaId = materiaId;
+            ViewBag.SortBy = sortBy;
+            ViewBag.SortDir = sortDir;
+            ViewBag.MateriasFiltro = new SelectList(db.Ind_Materias.Where(m => m.Activo), "MateriaID", "Nombre", materiaId);
+
+            return View(result);
         }
 
         // GET: /Coordinador/Calificar/5
@@ -178,21 +259,27 @@ namespace induccion_refactorization.Controllers
         // GET: /Coordinador/DownloadSubmission/5
         public ActionResult DownloadSubmission(int id)
         {
-            var submision = db.Ind_Submisiones.Find(id);
+            var submision = db.Ind_Submisiones
+                .Include(s => s.Documento)
+                .FirstOrDefault(s => s.SubmisionID == id);
             if (submision == null)
             {
                 TempData["Error"] = "Archivo no encontrado.";
                 return RedirectToAction("RevisarEntregas");
             }
 
-            var fullPath = Server.MapPath(submision.RutaArchivo);
+            var rutaArchivo = submision.Documento?.RutaAlmacenamiento ?? submision.RutaArchivo;
+            var nombreDescarga = submision.Documento?.NombreOriginal ?? Path.GetFileName(rutaArchivo);
+            var tipoMime = submision.Documento?.TipoMIME ?? "application/octet-stream";
+
+            var fullPath = Server.MapPath(rutaArchivo);
             if (!System.IO.File.Exists(fullPath))
             {
                 TempData["Error"] = "El archivo ya no está disponible en el servidor.";
                 return RedirectToAction("RevisarEntregas");
             }
 
-            return File(fullPath, "application/octet-stream", Path.GetFileName(fullPath));
+            return File(fullPath, tipoMime, nombreDescarga);
         }
 
         protected override void Dispose(bool disposing)

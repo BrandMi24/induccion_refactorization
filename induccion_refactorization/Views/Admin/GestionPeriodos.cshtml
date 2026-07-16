@@ -1,0 +1,95 @@
+@model List<induccion_refactorization.Models.Periodo>
+@{
+    ViewBag.Title = "Gestión de Periodos";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1"><i class="fas fa-calendar-alt text-primary"></i> Gestión de Periodos</h2>
+        <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
+    </div>
+    <a href="@Url.Action("CreatePeriodo", "Admin")" class="btn btn-primary">
+        <i class="fas fa-calendar-plus"></i> Nuevo Periodo
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Periodos Registrados</h5>
+        <small class="text-muted">@Model.Count resultado(s)</small>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th>Periodo</th>
+                            <th>Fecha Inicio</th>
+                            <th>Fecha Fin</th>
+                            <th class="text-center">Materias Asignadas</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var periodo in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="icon-badge icon-badge-sm icon-badge-primary">
+                                            <i class="fas fa-calendar-alt"></i>
+                                        </div>
+                                        <div class="fw-semibold">@periodo.Nombre</div>
+                                    </div>
+                                </td>
+                                <td>@periodo.FechaInicio.ToString("dd/MM/yyyy")</td>
+                                <td>@periodo.FechaFin.ToString("dd/MM/yyyy")</td>
+                                <td class="text-center">@periodo.Ind_Materias.Count</td>
+                                <td class="text-center">
+                                    @if (periodo.Activo)
+                                    {
+                                        <span class="badge bg-success">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactivo</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <a href="@Url.Action("EditPeriodo", new { id = periodo.PeriodoID })"
+                                       class="btn btn-sm btn-outline-secondary btn-icon"
+                                       title="Editar Periodo">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    @using (Html.BeginForm("TogglePeriodo", "Admin", new { id = periodo.PeriodoID }, FormMethod.Post, new { @class = "d-inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit"
+                                                class="btn btn-sm btn-icon @(periodo.Activo ? "btn-outline-danger" : "btn-outline-success")"
+                                                title="@(periodo.Activo ? "Desactivar" : "Reactivar")"
+                                                onclick="return confirm('¿Está seguro de @(periodo.Activo ? "desactivar" : "reactivar") este periodo?');">
+                                            <i class="fas @(periodo.Activo ? "fa-toggle-off" : "fa-toggle-on")"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon-badge icon-badge-lg icon-badge-info">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div class="empty-state-title">No hay periodos registrados</div>
+                <p class="mb-0">Crea el primer periodo para que los coordinadores puedan asignarlo a sus materias.</p>
+            </div>
+        }
+    </div>
+</div>

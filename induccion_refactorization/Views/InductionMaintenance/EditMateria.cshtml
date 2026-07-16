@@ -31,10 +31,26 @@
                             @Html.ValidationMessageFor(model => model.Descripcion, "", new { @class = "text-danger" })
                         </div>
 
+                        var selectedCarreraIds = (int[])ViewBag.SelectedCarreraIds;
                         <div class="form-group">
-                            @Html.LabelFor(model => model.CarreraID, "Carrera", new { @class = "control-label" })
-                            @Html.DropDownList("CarreraID", (SelectList)ViewBag.CarreraID, new { @class = "form-control" })
-                            @Html.ValidationMessageFor(model => model.CarreraID, "", new { @class = "text-danger" })
+                            <label class="control-label">Carreras</label>
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="todasLasCarreras" name="todasLasCarreras" value="true" @(Model.TodasLasCarreras ? "checked=\"checked\"" : "") />
+                                <label class="form-check-label" for="todasLasCarreras"><strong>Visible para todas las carreras</strong></label>
+                            </div>
+                            <div id="carrerasListContainer" class="row g-2 ps-2">
+                                @foreach (var carrera in (List<induccion_refactorization.Models.Carrera>)ViewBag.CarrerasList)
+                                {
+                                    var isChecked = selectedCarreraIds.Contains(carrera.CarreraID);
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input carrera-checkbox" name="carreraIds" value="@carrera.CarreraID" id="carrera_@carrera.CarreraID" @(isChecked ? "checked=\"checked\"" : "") />
+                                            <label class="form-check-label" for="carrera_@carrera.CarreraID">@carrera.Nombre</label>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <small class="form-text text-muted">Selecciona una o más carreras, o marca la casilla de arriba para hacerla visible a todas</small>
                         </div>
 
                         <div class="form-group">
@@ -62,4 +78,16 @@
 
 @section scripts {
     @Scripts.Render("~/bundles/jqueryval")
+
+    <script>
+        $(document).ready(function () {
+            function toggleCarrerasList() {
+                var todas = $('#todasLasCarreras').is(':checked');
+                $('.carrera-checkbox').prop('disabled', todas);
+                $('#carrerasListContainer').css('opacity', todas ? 0.5 : 1);
+            }
+            $('#todasLasCarreras').on('change', toggleCarrerasList);
+            toggleCarrerasList();
+        });
+    </script>
 }

@@ -2,36 +2,44 @@
 {
     var rolID = Session["RolID"] != null ? (int)Session["RolID"] : 0;
     var currentController = (string)ViewContext.RouteData.Values["controller"];
+    var currentAction = (string)ViewContext.RouteData.Values["action"];
 
-    Func<string, bool> isActive = c => string.Equals(currentController, c, System.StringComparison.OrdinalIgnoreCase);
+    // Active if the controller matches AND (no actions given, i.e. whole-controller section,
+    // OR the current action is one of the given actions for this link's "section").
+    Func<string, string[], bool> isActiveSection = (c, actions) =>
+        string.Equals(currentController, c, System.StringComparison.OrdinalIgnoreCase) &&
+        (actions == null || actions.Length == 0 || actions.Any(a => string.Equals(currentAction, a, System.StringComparison.OrdinalIgnoreCase)));
 
     <ul class="navbar-nav navbar-nav-center">
         @if (rolID == 1)
         {
-            <li class="nav-item"><a class="nav-link @(isActive("Admin") ? "active" : "")" href="@Url.Action("Index", "Admin")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
-            <li class="nav-item"><a class="nav-link @(isActive("InductionMaintenance") ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
-            <li class="nav-item"><a class="nav-link @(isActive("Admin") ? "active" : "")" href="@Url.Action("GestionUsuarios", "Admin")"><i class="fas fa-user-cog"></i> Gestión de Usuarios</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Index" }) ? "active" : "")" href="@Url.Action("Index", "Admin")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("InductionMaintenance", null) ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionUsuarios", "CreateUsuario", "EditUsuario" }) ? "active" : "")" href="@Url.Action("GestionUsuarios", "Admin")"><i class="fas fa-user-cog"></i> Gestión de Usuarios</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionPeriodos", "CreatePeriodo", "EditPeriodo" }) ? "active" : "")" href="@Url.Action("GestionPeriodos", "Admin")"><i class="fas fa-calendar-alt"></i> Periodos</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Permisos" }) ? "active" : "")" href="@Url.Action("Permisos", "Admin")"><i class="fas fa-shield-alt"></i> Permisos por Rol</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Reportes" }) ? "active" : "")" href="@Url.Action("Reportes", "Admin")"><i class="fas fa-chart-bar"></i> Reportes</a></li>
         }
         else if (rolID == 2)
         {
-            <li class="nav-item"><a class="nav-link @(isActive("Director") ? "active" : "")" href="@Url.Action("Index", "Director")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Director", null) ? "active" : "")" href="@Url.Action("Index", "Director")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
         }
         else if (rolID == 3)
         {
-            <li class="nav-item"><a class="nav-link @(isActive("Coordinador") ? "active" : "")" href="@Url.Action("Index", "Coordinador")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
-            <li class="nav-item"><a class="nav-link @(isActive("InductionMaintenance") ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
-            <li class="nav-item"><a class="nav-link @(isActive("Coordinador") ? "active" : "")" href="@Url.Action("RevisarEntregas", "Coordinador")"><i class="fas fa-clipboard-check"></i> Revisar Entregas</a></li>
-            <li class="nav-item"><a class="nav-link @(isActive("Coordinador") ? "active" : "")" href="@Url.Action("RevisarProgreso", "Coordinador")"><i class="fas fa-list-check"></i> Revisar Unidades</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "Index" }) ? "active" : "")" href="@Url.Action("Index", "Coordinador")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("InductionMaintenance", null) ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "RevisarEntregas", "Calificar", "DownloadSubmission" }) ? "active" : "")" href="@Url.Action("RevisarEntregas", "Coordinador")"><i class="fas fa-clipboard-check"></i> Revisar Entregas</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "RevisarProgreso", "CalificarProgreso" }) ? "active" : "")" href="@Url.Action("RevisarProgreso", "Coordinador")"><i class="fas fa-list-check"></i> Revisar Unidades</a></li>
         }
         else if (rolID == 4)
         {
-            <li class="nav-item"><a class="nav-link @(isActive("Aspirante") ? "active" : "")" href="@Url.Action("Index", "Aspirante")"><i class="fas fa-graduation-cap"></i> Mi Espacio</a></li>
+            <li class="nav-item"><a class="nav-link @(isActiveSection("Aspirante", null) ? "active" : "")" href="@Url.Action("Index", "Aspirante")"><i class="fas fa-graduation-cap"></i> Mi Espacio</a></li>
         }
     </ul>
 
     <ul class="navbar-nav ms-auto">
         <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle @(isActive("Perfil") ? "active" : "")"
+            <a class="nav-link dropdown-toggle @(isActiveSection("Perfil", null) ? "active" : "")"
                href="#"
                id="userDropdown"
                role="button"

@@ -18,6 +18,8 @@ namespace induccion_refactorization.Models
         [StringLength(500)]
         public string RutaArchivo { get; set; }
 
+        public int? DocumentoID { get; set; }
+
         public DateTime FechaEnvio { get; set; }
 
         [Required]
@@ -42,5 +44,8 @@ namespace induccion_refactorization.Models
 
         [ForeignKey("UsuarioRevisorID")]
         public virtual Usuario UsuarioRevisor { get; set; }
+
+        [ForeignKey("DocumentoID")]
+        public virtual Documento Documento { get; set; }
     }
 }

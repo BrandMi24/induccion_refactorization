@@ -44,7 +44,7 @@
                         Subir un nuevo archivo reemplazará el anterior y reiniciará la revisión.
                     </div>
 
-                    @if (!string.IsNullOrEmpty(submisionExistente.ComentarioRevisor))
+                    if (!string.IsNullOrEmpty(submisionExistente.ComentarioRevisor))
                     {
                         <div class="alert alert-light small">
                             <strong>Comentarios del revisor:</strong>

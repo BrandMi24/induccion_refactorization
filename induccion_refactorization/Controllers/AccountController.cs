@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
+using induccion_refactorization.Helpers;
 using induccion_refactorization.Models;
 using induccion_refactorization.ViewModels;
 
@@ -50,13 +51,25 @@ namespace induccion_refactorization.Controllers
                     return View(model);
                 }
 
-                // Validate password
-                // IMPORTANT: For production, use BCrypt.Net.BCrypt.Verify(model.Password, user.Contrasena)
-                // For initial development/testing, you can use plain text comparison:
-                if (user.Contrasena != model.Password)
+                // Validate password. Existing rows may still hold a legacy plain-text value;
+                // those are verified directly and transparently upgraded to a PBKDF2 hash on
+                // successful login so no separate data migration is required.
+                bool passwordValid;
+                if (PasswordHasher.IsHashed(user.Contrasena))
                 {
-                    // TODO: Replace with BCrypt verification in production
-                    // if (!BCrypt.Net.BCrypt.Verify(model.Password, user.Contrasena))
+                    passwordValid = PasswordHasher.Verify(model.Password, user.Contrasena);
+                }
+                else
+                {
+                    passwordValid = user.Contrasena == model.Password;
+                    if (passwordValid)
+                    {
+                        user.Contrasena = PasswordHasher.Hash(model.Password);
+                    }
+                }
+
+                if (!passwordValid)
+                {
                     ModelState.AddModelError("", "Contraseña incorrecta.");
                     return View(model);
                 }
@@ -85,6 +98,10 @@ namespace induccion_refactorization.Controllers
                 Session["RolID"] = user.RolID;
                 Session["NombreCompleto"] = user.NombreCompleto;
                 Session["Email"] = user.CorreoElectronico;
+
+                // Record last access time
+                user.UltimoAcceso = DateTime.Now;
+                db.SaveChanges();
 
                 // Load role-specific data and redirect
                 return RedirectByRole(user, returnUrl);

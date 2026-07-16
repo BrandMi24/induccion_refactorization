@@ -7,8 +7,8 @@
     <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-3">
+<div class="row g-4 justify-content-center">
+    <div class="col-md-5">
         <div class="action-card">
             <div class="icon-badge icon-badge-lg icon-badge-primary">
                 <i class="fas fa-book"></i>
@@ -21,7 +21,7 @@
         </div>
     </div>
 
-    <div class="col-md-3">
+    <div class="col-md-5">
         <div class="action-card">
             <div class="icon-badge icon-badge-lg icon-badge-success">
                 <i class="fas fa-user-cog"></i>
@@ -34,7 +34,20 @@
         </div>
     </div>
 
-    <div class="col-md-3">
+    <div class="col-md-5">
+        <div class="action-card">
+            <div class="icon-badge icon-badge-lg icon-badge-secondary">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <h5 class="action-card-title">Gestión de Periodos</h5>
+            <p class="action-card-text">Crear y administrar los periodos disponibles para las materias.</p>
+            <a href="@Url.Action("GestionPeriodos", "Admin")" class="btn btn-secondary">
+                Ir a Gestión <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-md-5">
         <div class="action-card">
             <div class="icon-badge icon-badge-lg icon-badge-warning">
                 <i class="fas fa-shield-alt"></i>
@@ -47,16 +60,16 @@
         </div>
     </div>
 
-    <div class="col-md-3">
+    <div class="col-md-5">
         <div class="action-card">
             <div class="icon-badge icon-badge-lg icon-badge-info">
                 <i class="fas fa-chart-bar"></i>
             </div>
             <h5 class="action-card-title">Reportes</h5>
             <p class="action-card-text">Estadísticas y reportes del sistema de inducción.</p>
-            <button type="button" class="btn btn-info text-white" disabled>
-                Próximamente
-            </button>
+            <a href="@Url.Action("Reportes", "Admin")" class="btn btn-info text-white">
+                Ver Reportes <i class="fas fa-arrow-right ms-1"></i>
+            </a>
         </div>
     </div>
 </div>

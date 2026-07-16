@@ -265,6 +265,7 @@ a:focus {
     overflow: hidden;
     margin-top: 0.5rem;
     padding: 0.5rem 0;
+    max-width: min(300px, calc(100vw - 1.5rem));
     animation: dropdownFade 0.2s ease;
 }
 
@@ -314,6 +315,13 @@ a:focus {
 .dropdown-item-text {
     padding: 0.75rem 1.5rem;
     color: var(--gray-600);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.dropdown-item {
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .dropdown-item.text-danger:hover {
@@ -761,6 +769,15 @@ a:focus {
 .form-control[readonly] {
     background-color: var(--gray-100);
     opacity: 0.7;
+}
+
+/* Restore Bootstrap's small-size modifier, which the base .form-control
+   rule above otherwise overrides (equal specificity, later in cascade). */
+.form-control-sm,
+.form-select-sm {
+    padding: 0.35rem 0.65rem !important;
+    font-size: 0.85rem !important;
+    border-width: 1px !important;
 }
 
 .form-group {
@@ -1311,19 +1328,85 @@ textarea:focus {
 }
 
 /* ========================================
+   STATUS ICON - neutral gray circle, colored icon
+   Use for compact status indicators (e.g. unit lists)
+   ======================================== */
+.status-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: var(--gray-100);
+    flex-shrink: 0;
+}
+
+.status-icon i {
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+.status-icon-secondary i { color: var(--gray-500); }
+.status-icon-info i { color: var(--info); }
+.status-icon-warning i { color: var(--warning); }
+.status-icon-success i { color: var(--success); }
+.status-icon-danger i { color: var(--danger); }
+.status-icon-primary i { color: var(--primary-dark); }
+
+/* ========================================
    ICON BADGES - modern colored icon containers
    Use instead of bare <i> icons for a designed,
    non-generic look (stat cards, list rows, headers)
    ======================================== */
 .icon-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     width: 38px;
     height: 38px;
     border-radius: var(--border-radius);
     font-size: 0.95rem;
     flex-shrink: 0;
+}
+
+/* Force every icon glyph to center itself via flexbox rather than relying on
+   font line-height metrics (which vary per-glyph and never center reliably). */
+.icon-badge i,
+.status-icon i,
+.btn-icon i,
+.sortable-header i,
+.btn i {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+/* Center a lone icon inside a button/link that has no other visible text */
+.btn:has(> i:only-child) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* Explicit class for icon-only action buttons (edit/delete/toggle/etc.) -
+   applied directly in markup so centering doesn't depend on :has() support. */
+.btn-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 2rem;
+    height: 2rem;
+    padding: 0 !important;
+    line-height: 1;
+}
+
+.btn-icon.btn-sm {
+    width: 1.85rem;
+    height: 1.85rem;
 }
 
 .icon-badge-sm {
@@ -1343,6 +1426,7 @@ textarea:focus {
 .icon-badge-warning { background-color: var(--warning-light); color: var(--warning); }
 .icon-badge-danger { background-color: var(--danger-light); color: var(--danger); }
 .icon-badge-info { background-color: var(--info-light); color: var(--info); }
+.icon-badge-secondary { background-color: var(--gray-200); color: var(--gray-600); }
 
 /* --- Stat cards --- */
 .stat-card {
@@ -1352,6 +1436,7 @@ textarea:focus {
     padding: 0.85rem 1rem;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.75rem;
     box-shadow: var(--shadow-xs);
     transition: box-shadow var(--transition-base), transform var(--transition-base);
@@ -1443,6 +1528,33 @@ textarea:focus {
 .table-clean td {
     vertical-align: middle;
     border-color: var(--gray-100);
+}
+
+.sortable-header {
+    color: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.sortable-header:hover {
+    color: var(--primary-dark);
+    text-decoration: none;
+}
+
+.sortable-header i {
+    font-size: 0.7rem;
+}
+
+/* --- Pager bar --- */
+.pager-bar {
+    border-top: 1px solid var(--gray-200);
+    background-color: var(--gray-50);
+}
+
+.pager-bar .form-select {
+    min-width: 4.5rem;
 }
 
 .body-content {

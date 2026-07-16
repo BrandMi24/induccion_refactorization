@@ -8,7 +8,8 @@
     <meta name="author" content="Universidad Tecnológica de Tamaulipas Norte">
     <title>@ViewBag.Title - Sistema de Inducción</title>
 
-    @Styles.Render("~/Content/css")
+    <link rel="stylesheet" href="@Url.Content("~/Content/bootstrap.css")" />
+    <link rel="stylesheet" href="@Url.Content("~/Content/site.css")?v=@System.IO.File.GetLastWriteTime(Server.MapPath("~/Content/site.css")).Ticks" />
     @Scripts.Render("~/bundles/modernizr")
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"

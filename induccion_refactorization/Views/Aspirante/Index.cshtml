@@ -1,6 +1,45 @@
 @model induccion_refactorization.ViewModels.AspiranteDashboardViewModel
 @{
     ViewBag.Title = "Mi Espacio de Inducción";
+    var previewCount = (int)(ViewBag.CursosPreviewCount ?? 2);
+    var preview = Model.MateriasProgreso.Take(previewCount).ToList();
+}
+
+@helper CourseCard(induccion_refactorization.ViewModels.MateriaProgresoViewModel item)
+{
+    <div class="course-card" data-course-name="@item.Materia.Nombre.ToLower()">
+        <div class="d-flex align-items-start justify-content-between mb-2">
+            <h6 class="mb-0"><i class="fas fa-book text-primary"></i> @item.Materia.Nombre</h6>
+            @if (item.PromedioCalificacion.HasValue && item.UnidadesCompletadas > 0)
+            {
+                <span class="badge bg-success">@item.PromedioCalificacion.Value.ToString("F2")</span>
+            }
+        </div>
+        <p class="text-muted small mb-3">
+            @if (!string.IsNullOrEmpty(item.Materia.Descripcion))
+            {
+                @(item.Materia.Descripcion.Length > 100 ? item.Materia.Descripcion.Substring(0, 100) + "..." : item.Materia.Descripcion)
+            }
+            else
+            {
+                @:Sin descripción disponible
+            }
+        </p>
+
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small text-muted">Progreso</span>
+            <span class="badge bg-primary">@item.UnidadesCompletadas de @item.TotalUnidades</span>
+        </div>
+        <div class="progress mb-3" style="height: 8px;">
+            <div class="progress-bar" role="progressbar" style="width: @(item.PorcentajeProgreso)%;"
+                 aria-valuenow="@item.PorcentajeProgreso" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+
+        <a href="@Url.Action("MateriaDetails", "Aspirante", new { id = item.Materia.MateriaID })"
+           class="btn btn-sm btn-primary w-100">
+            Ver Contenido <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+    </div>
 }
 
 <div class="mb-4">
@@ -18,15 +57,11 @@
 <div class="card mb-4">
     <div class="card-body">
         <div class="row">
-            <div class="col-md-4">
-                <div class="text-muted small">Matrícula</div>
-                <div class="fw-semibold">@(string.IsNullOrEmpty(Model.Matricula) ? "Sin asignar" : Model.Matricula)</div>
-            </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="text-muted small">Folio</div>
                 <div class="fw-semibold">@Model.Folio</div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="text-muted small">Correo</div>
                 <div class="fw-semibold">@Model.Email</div>
             </div>
@@ -72,49 +107,23 @@
 }
 
 <div class="card">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Mis Cursos Asignados</h5>
+        @if (Model.MateriasProgreso.Count > previewCount)
+        {
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTodosLosCursos">
+                Ver todos (@Model.MateriasProgreso.Count) <i class="fas fa-arrow-right ms-1"></i>
+            </button>
+        }
     </div>
     <div class="card-body">
-        @if (Model.MateriasProgreso.Any())
+        @if (preview.Any())
         {
             <div class="row g-3">
-                @foreach (var item in Model.MateriasProgreso)
+                @foreach (var item in preview)
                 {
                     <div class="col-md-6">
-                        <div class="course-card">
-                            <div class="d-flex align-items-start justify-content-between mb-2">
-                                <h6 class="mb-0"><i class="fas fa-book text-primary"></i> @item.Materia.Nombre</h6>
-                                @if (item.PromedioCalificacion.HasValue && item.UnidadesCompletadas > 0)
-                                {
-                                    <span class="badge bg-success">@item.PromedioCalificacion.Value.ToString("F2")</span>
-                                }
-                            </div>
-                            <p class="text-muted small mb-3">
-                                @if (!string.IsNullOrEmpty(item.Materia.Descripcion))
-                                {
-                                    @(item.Materia.Descripcion.Length > 100 ? item.Materia.Descripcion.Substring(0, 100) + "..." : item.Materia.Descripcion)
-                                }
-                                else
-                                {
-                                    @:Sin descripción disponible
-                                }
-                            </p>
-
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="small text-muted">Progreso</span>
-                                <span class="badge bg-primary">@item.UnidadesCompletadas de @item.TotalUnidades</span>
-                            </div>
-                            <div class="progress mb-3" style="height: 8px;">
-                                <div class="progress-bar" role="progressbar" style="width: @(item.PorcentajeProgreso)%;"
-                                     aria-valuenow="@item.PorcentajeProgreso" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-
-                            <a href="@Url.Action("MateriaDetails", "Aspirante", new { id = item.Materia.MateriaID })"
-                               class="btn btn-sm btn-primary w-100">
-                                Ver Contenido <i class="fas fa-arrow-right ms-1"></i>
-                            </a>
-                        </div>
+                        @CourseCard(item)
                     </div>
                 }
             </div>
@@ -131,6 +140,59 @@
         }
     </div>
 </div>
+
+@if (Model.MateriasProgreso.Count > previewCount)
+{
+    <div class="modal fade" id="modalTodosLosCursos" tabindex="-1" aria-labelledby="modalTodosLosCursosLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTodosLosCursosLabel">Mis Cursos (@Model.MateriasProgreso.Count)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="filtroCursos" class="form-control mb-3" placeholder="Buscar por nombre de materia..." autocomplete="off" />
+
+                    <div class="row g-3" id="listaTodosLosCursos">
+                        @foreach (var item in Model.MateriasProgreso)
+                        {
+                            <div class="col-md-6 curso-item">
+                                @CourseCard(item)
+                            </div>
+                        }
+                    </div>
+
+                    <div id="sinResultadosCursos" class="empty-state d-none">
+                        <div class="icon-badge icon-badge-lg icon-badge-info">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="empty-state-title">Sin resultados</div>
+                        <p class="mb-0">Intenta con otro término de búsqueda.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section scripts {
+    <script>
+        document.getElementById('filtroCursos')?.addEventListener('input', function (e) {
+            var term = e.target.value.trim().toLowerCase();
+            var items = document.querySelectorAll('#listaTodosLosCursos .curso-item');
+            var visibleCount = 0;
+
+            items.forEach(function (item) {
+                var name = item.querySelector('.course-card').getAttribute('data-course-name') || '';
+                var matches = name.indexOf(term) !== -1;
+                item.classList.toggle('d-none', !matches);
+                if (matches) { visibleCount++; }
+            });
+
+            document.getElementById('sinResultadosCursos').classList.toggle('d-none', visibleCount !== 0);
+        });
+    </script>
+}
 
 @section styles {
     <style>

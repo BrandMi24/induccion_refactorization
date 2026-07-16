@@ -1,35 +1,102 @@
 @model induccion_refactorization.ViewModels.PagerViewModel
 @{
-    if (Model == null || Model.TotalPages <= 1)
+    if (Model == null || Model.TotalPages == 0)
     {
         return;
     }
 
+    var jumpFormId = "pagerJumpForm_" + Model.Controller + "_" + Model.Action;
+    var sizeFormId = "pagerSizeForm_" + Model.Controller + "_" + Model.Action;
+
     Func<int, System.Web.Routing.RouteValueDictionary> routeFor = page =>
     {
-        var rv = new System.Web.Routing.RouteValueDictionary(Model.RouteValues) { ["page"] = page };
+        var rv = new System.Web.Routing.RouteValueDictionary(Model.RouteValues) { ["page"] = page, ["pageSize"] = Model.PageSize };
         return rv;
     };
 }
 
-<nav aria-label="Paginación" class="d-flex justify-content-between align-items-center px-3 py-2">
-    <small class="text-muted">Página @Model.PageNumber de @Model.TotalPages</small>
-    <ul class="pagination pagination-sm mb-0">
-        <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
-            <a class="page-link" href="@Url.Action(Model.Action, Model.Controller, routeFor(Model.PageNumber - 1))">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-2 pager-bar">
+    <div class="d-flex align-items-center gap-2">
+        @if (Model.PageNumber <= 1)
+        {
+            <span class="btn btn-sm btn-outline-secondary btn-icon disabled"><i class="fas fa-chevron-left"></i></span>
+        }
+        else
+        {
+            <a href="@Url.Action(Model.Action, Model.Controller, routeFor(Model.PageNumber - 1))" class="btn btn-sm btn-outline-secondary btn-icon">
                 <i class="fas fa-chevron-left"></i>
             </a>
-        </li>
-        @for (var p = 1; p <= Model.TotalPages; p++)
-        {
-            <li class="page-item @(p == Model.PageNumber ? "active" : "")">
-                <a class="page-link" href="@Url.Action(Model.Action, Model.Controller, routeFor(p))">@p</a>
-            </li>
         }
-        <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
-            <a class="page-link" href="@Url.Action(Model.Action, Model.Controller, routeFor(Model.PageNumber + 1))">
+
+        <span class="small text-muted">Página</span>
+
+        @using (Html.BeginForm(Model.Action, Model.Controller, FormMethod.Get, new { id = jumpFormId, @class = "d-inline" }))
+        {
+            foreach (var kvp in Model.RouteValues)
+            {
+                if (kvp.Value != null)
+                {
+                    @Html.Hidden(kvp.Key, kvp.Value)
+                }
+            }
+            @Html.Hidden("pageSize", Model.PageSize)
+
+            <select name="page" class="form-select form-select-sm w-auto d-inline-block" onchange="document.getElementById('@jumpFormId').submit();">
+                @for (var p = 1; p <= Model.TotalPages; p++)
+                {
+                    if (p == Model.PageNumber)
+                    {
+                        <option value="@p" selected="selected">@p</option>
+                    }
+                    else
+                    {
+                        <option value="@p">@p</option>
+                    }
+                }
+            </select>
+        }
+
+        <span class="small text-muted">de @Model.TotalPages</span>
+
+        @if (Model.PageNumber >= Model.TotalPages)
+        {
+            <span class="btn btn-sm btn-outline-secondary btn-icon disabled"><i class="fas fa-chevron-right"></i></span>
+        }
+        else
+        {
+            <a href="@Url.Action(Model.Action, Model.Controller, routeFor(Model.PageNumber + 1))" class="btn btn-sm btn-outline-secondary btn-icon">
                 <i class="fas fa-chevron-right"></i>
             </a>
-        </li>
-    </ul>
-</nav>
+        }
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <label class="small text-muted mb-0">Mostrar</label>
+        @using (Html.BeginForm(Model.Action, Model.Controller, FormMethod.Get, new { id = sizeFormId, @class = "d-inline" }))
+        {
+            foreach (var kvp in Model.RouteValues)
+            {
+                if (kvp.Value != null)
+                {
+                    @Html.Hidden(kvp.Key, kvp.Value)
+                }
+            }
+            @Html.Hidden("page", 1)
+
+            <select name="pageSize" class="form-select form-select-sm w-auto d-inline-block" onchange="document.getElementById('@sizeFormId').submit();">
+                @foreach (var size in new[] { 5, 10, 15, 20 })
+                {
+                    if (size == Model.PageSize)
+                    {
+                        <option value="@size" selected="selected">@size</option>
+                    }
+                    else
+                    {
+                        <option value="@size">@size</option>
+                    }
+                }
+            </select>
+        }
+        <span class="small text-muted">por página</span>
+    </div>
+</div>

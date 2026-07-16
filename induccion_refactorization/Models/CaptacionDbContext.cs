@@ -29,6 +29,11 @@ namespace induccion_refactorization.Models
         public virtual DbSet<Ind_Entregable> Ind_Entregables { get; set; }
         public virtual DbSet<Ind_Submision> Ind_Submisiones { get; set; }
 
+        // Document Management Tables
+        public virtual DbSet<Documento> Documentos { get; set; }
+        public virtual DbSet<TipoDocumento> TiposDocumentos { get; set; }
+        public virtual DbSet<EstadoDocumento> EstadosDocumentos { get; set; }
+
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             // Configure decimal precision for Calificacion
@@ -113,6 +118,47 @@ namespace induccion_refactorization.Models
                 .WithMany()
                 .HasForeignKey(s => s.UsuarioRevisorID)
                 .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Ind_Submision>()
+                .HasOptional(s => s.Documento)
+                .WithMany()
+                .HasForeignKey(s => s.DocumentoID)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Documento>()
+                .HasRequired(d => d.Aspirante)
+                .WithMany()
+                .HasForeignKey(d => d.AspiranteID)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Documento>()
+                .HasRequired(d => d.TipoDocumento)
+                .WithMany(t => t.Documentos)
+                .HasForeignKey(d => d.TipoDocumentoID)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Documento>()
+                .HasRequired(d => d.EstadoDocumento)
+                .WithMany(e => e.Documentos)
+                .HasForeignKey(d => d.EstadoDocumentoID)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Documento>()
+                .HasOptional(d => d.Usuario)
+                .WithMany()
+                .HasForeignKey(d => d.UsuarioID)
+                .WillCascadeOnDelete(false);
+
+            // Ind_Materia <-> Carrera many-to-many (a materia can target several careers, or all via TodasLasCarreras)
+            modelBuilder.Entity<Ind_Materia>()
+                .HasMany(m => m.Carreras)
+                .WithMany(c => c.Ind_Materias)
+                .Map(map =>
+                {
+                    map.ToTable("Ind_MateriaCarreras");
+                    map.MapLeftKey("MateriaID");
+                    map.MapRightKey("CarreraID");
+                });
 
             base.OnModelCreating(modelBuilder);
         }

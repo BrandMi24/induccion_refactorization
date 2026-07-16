@@ -15,10 +15,10 @@ namespace induccion_refactorization.Controllers
         private CaptacionDbContext db = new CaptacionDbContext();
 
         // GET: /InductionMaintenance/Index
-        public ActionResult Index(string search, int? carreraId, int? periodoId, int page = 1)
+        public ActionResult Index(string search, int? carreraId, int? periodoId, string sortBy, string sortDir, int page = 1, int pageSize = 10)
         {
             var query = db.Ind_Materias
-                .Include(m => m.Carrera)
+                .Include(m => m.Carreras)
                 .Include(m => m.Periodo)
                 .Include(m => m.Ind_Unidades)
                 .Where(m => m.Activo);
@@ -31,7 +31,7 @@ namespace induccion_refactorization.Controllers
 
             if (carreraId.HasValue)
             {
-                query = query.Where(m => m.CarreraID == carreraId.Value);
+                query = query.Where(m => m.TodasLasCarreras || m.Carreras.Any(c => c.CarreraID == carreraId.Value));
             }
 
             if (periodoId.HasValue)
@@ -39,9 +39,29 @@ namespace induccion_refactorization.Controllers
                 query = query.Where(m => m.PeriodoID == periodoId.Value);
             }
 
-            query = query.OrderBy(m => m.MateriaID);
+            bool descending = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            switch (sortBy)
+            {
+                case "Carrera":
+                    query = descending
+                        ? query.OrderByDescending(m => m.TodasLasCarreras).ThenByDescending(m => m.MateriaID)
+                        : query.OrderBy(m => m.TodasLasCarreras).ThenBy(m => m.MateriaID);
+                    break;
+                case "Periodo":
+                    query = descending ? query.OrderByDescending(m => m.Periodo.FechaInicio) : query.OrderBy(m => m.Periodo.FechaInicio);
+                    break;
+                case "Unidades":
+                    query = descending ? query.OrderByDescending(m => m.Ind_Unidades.Count) : query.OrderBy(m => m.Ind_Unidades.Count);
+                    break;
+                case "Nombre":
+                    query = descending ? query.OrderByDescending(m => m.Nombre) : query.OrderBy(m => m.Nombre);
+                    break;
+                default:
+                    query = query.OrderBy(m => m.MateriaID);
+                    break;
+            }
 
-            var result = PagedResult<Ind_Materia>.Create(query, page, 10);
+            var result = PagedResult<Ind_Materia>.Create(query, page, pageSize);
 
             ViewBag.TotalMaterias = db.Ind_Materias.Count(m => m.Activo);
             ViewBag.TotalUnidades = db.Ind_Unidades.Count();
@@ -50,6 +70,8 @@ namespace induccion_refactorization.Controllers
             ViewBag.Search = search;
             ViewBag.CarreraId = carreraId;
             ViewBag.PeriodoId = periodoId;
+            ViewBag.SortBy = sortBy;
+            ViewBag.SortDir = sortDir;
             ViewBag.CarrerasFiltro = new SelectList(db.Carreras, "CarreraID", "Nombre", carreraId);
             ViewBag.PeriodosFiltro = new SelectList(db.Periodos, "PeriodoID", "Nombre", periodoId);
 
@@ -59,7 +81,7 @@ namespace induccion_refactorization.Controllers
         // GET: /InductionMaintenance/CreateMateria
         public ActionResult CreateMateria()
         {
-            ViewBag.CarreraID = new SelectList(db.Carreras, "CarreraID", "Nombre");
+            ViewBag.CarrerasList = db.Carreras.OrderBy(c => c.Nombre).ToList();
             ViewBag.PeriodoID = new SelectList(db.Periodos.Where(p => p.Activo), "PeriodoID", "Nombre");
             return View();
         }
@@ -67,13 +89,31 @@ namespace induccion_refactorization.Controllers
         // POST: /InductionMaintenance/CreateMateria
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult CreateMateria(Ind_Materia materia)
+        public ActionResult CreateMateria(Ind_Materia materia, int[] carreraIds, bool todasLasCarreras)
         {
+            ModelState.Remove("Carreras");
+
+            if (!todasLasCarreras && (carreraIds == null || carreraIds.Length == 0))
+            {
+                ModelState.AddModelError("", "Selecciona al menos una carrera, o marca \"Visible para todas las carreras\".");
+            }
+
             if (ModelState.IsValid)
             {
                 try
                 {
                     materia.Activo = true;
+                    materia.TodasLasCarreras = todasLasCarreras;
+
+                    if (!todasLasCarreras)
+                    {
+                        var carreras = db.Carreras.Where(c => carreraIds.Contains(c.CarreraID)).ToList();
+                        foreach (var carrera in carreras)
+                        {
+                            materia.Carreras.Add(carrera);
+                        }
+                    }
+
                     db.Ind_Materias.Add(materia);
                     db.SaveChanges();
 
@@ -86,7 +126,8 @@ namespace induccion_refactorization.Controllers
                 }
             }
 
-            ViewBag.CarreraID = new SelectList(db.Carreras, "CarreraID", "Nombre", materia.CarreraID);
+            ViewBag.CarrerasList = db.Carreras.OrderBy(c => c.Nombre).ToList();
+            ViewBag.SelectedCarreraIds = carreraIds ?? new int[0];
             ViewBag.PeriodoID = new SelectList(db.Periodos.Where(p => p.Activo), "PeriodoID", "Nombre", materia.PeriodoID);
             return View(materia);
         }
@@ -99,13 +140,16 @@ namespace induccion_refactorization.Controllers
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
 
-            var materia = db.Ind_Materias.Find(id);
+            var materia = db.Ind_Materias
+                .Include(m => m.Carreras)
+                .FirstOrDefault(m => m.MateriaID == id);
             if (materia == null)
             {
                 return HttpNotFound();
             }
 
-            ViewBag.CarreraID = new SelectList(db.Carreras, "CarreraID", "Nombre", materia.CarreraID);
+            ViewBag.CarrerasList = db.Carreras.OrderBy(c => c.Nombre).ToList();
+            ViewBag.SelectedCarreraIds = materia.Carreras.Select(c => c.CarreraID).ToArray();
             ViewBag.PeriodoID = new SelectList(db.Periodos.Where(p => p.Activo), "PeriodoID", "Nombre", materia.PeriodoID);
             return View(materia);
         }
@@ -113,16 +157,45 @@ namespace induccion_refactorization.Controllers
         // POST: /InductionMaintenance/EditMateria/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult EditMateria(Ind_Materia materia)
+        public ActionResult EditMateria(Ind_Materia materia, int[] carreraIds, bool todasLasCarreras)
         {
+            ModelState.Remove("Carreras");
+
+            if (!todasLasCarreras && (carreraIds == null || carreraIds.Length == 0))
+            {
+                ModelState.AddModelError("", "Selecciona al menos una carrera, o marca \"Visible para todas las carreras\".");
+            }
+
             if (ModelState.IsValid)
             {
                 try
                 {
-                    db.Entry(materia).State = EntityState.Modified;
+                    var existing = db.Ind_Materias
+                        .Include(m => m.Carreras)
+                        .FirstOrDefault(m => m.MateriaID == materia.MateriaID);
+                    if (existing == null)
+                    {
+                        return HttpNotFound();
+                    }
+
+                    existing.Nombre = materia.Nombre;
+                    existing.Descripcion = materia.Descripcion;
+                    existing.PeriodoID = materia.PeriodoID;
+                    existing.TodasLasCarreras = todasLasCarreras;
+
+                    existing.Carreras.Clear();
+                    if (!todasLasCarreras)
+                    {
+                        var carreras = db.Carreras.Where(c => carreraIds.Contains(c.CarreraID)).ToList();
+                        foreach (var carrera in carreras)
+                        {
+                            existing.Carreras.Add(carrera);
+                        }
+                    }
+
                     db.SaveChanges();
 
-                    TempData["Success"] = $"Materia '{materia.Nombre}' actualizada exitosamente.";
+                    TempData["Success"] = $"Materia '{existing.Nombre}' actualizada exitosamente.";
                     return RedirectToAction("Index");
                 }
                 catch (Exception ex)
@@ -131,7 +204,8 @@ namespace induccion_refactorization.Controllers
                 }
             }
 
-            ViewBag.CarreraID = new SelectList(db.Carreras, "CarreraID", "Nombre", materia.CarreraID);
+            ViewBag.CarrerasList = db.Carreras.OrderBy(c => c.Nombre).ToList();
+            ViewBag.SelectedCarreraIds = carreraIds ?? new int[0];
             ViewBag.PeriodoID = new SelectList(db.Periodos.Where(p => p.Activo), "PeriodoID", "Nombre", materia.PeriodoID);
             return View(materia);
         }

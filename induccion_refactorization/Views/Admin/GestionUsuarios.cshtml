@@ -56,7 +56,7 @@
                     <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
                         <i class="fas fa-search"></i> Filtrar
                     </button>
-                    <a href="@Url.Action("GestionUsuarios", "Admin")" class="btn btn-sm btn-outline-secondary" title="Limpiar filtros">
+                    <a href="@Url.Action("GestionUsuarios", "Admin")" class="btn btn-sm btn-outline-secondary btn-icon" title="Limpiar filtros">
                         <i class="fas fa-times"></i>
                     </a>
                 </div>
@@ -77,10 +77,42 @@
                 <table class="table table-hover table-clean mb-0">
                     <thead>
                         <tr>
-                            <th>Usuario</th>
-                            <th>Correo</th>
-                            <th>Rol</th>
-                            <th class="text-center">Estado</th>
+                            @{
+                                var sortRouteValues = new System.Web.Routing.RouteValueDictionary(new
+                                {
+                                    search = ViewBag.Search,
+                                    rolId = ViewBag.RolId,
+                                    activo = ViewBag.Activo
+                                });
+                            }
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Usuario", SortField = "Nombre", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "GestionUsuarios", Controller = "Admin", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Correo", SortField = "Correo", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "GestionUsuarios", Controller = "Admin", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Rol", SortField = "Rol", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "GestionUsuarios", Controller = "Admin", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th class="text-center">
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Estado", SortField = "Estado", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "GestionUsuarios", Controller = "Admin", RouteValues = sortRouteValues
+                                })
+                            </th>
                             <th class="text-end">Acciones</th>
                         </tr>
                     </thead>
@@ -115,7 +147,7 @@
                                 </td>
                                 <td class="text-end">
                                     <a href="@Url.Action("EditUsuario", new { id = usuario.UsuarioID })"
-                                       class="btn btn-sm btn-outline-secondary"
+                                       class="btn btn-sm btn-outline-secondary btn-icon"
                                        title="Editar Usuario">
                                         <i class="fas fa-edit"></i>
                                     </a>
@@ -123,7 +155,7 @@
                                     {
                                         @Html.AntiForgeryToken()
                                         <button type="submit"
-                                                class="btn btn-sm @(usuario.Activo ? "btn-outline-danger" : "btn-outline-success")"
+                                                class="btn btn-sm btn-icon @(usuario.Activo ? "btn-outline-danger" : "btn-outline-success")"
                                                 title="@(usuario.Activo ? "Desactivar" : "Reactivar")"
                                                 onclick="return confirm('¿Está seguro de @(usuario.Activo ? "desactivar" : "reactivar") este usuario?');">
                                             <i class="fas @(usuario.Activo ? "fa-user-slash" : "fa-user-check")"></i>
@@ -139,9 +171,10 @@
             {
                 PageNumber = Model.PageNumber,
                 TotalPages = Model.TotalPages,
+                PageSize = Model.PageSize,
                 Action = "GestionUsuarios",
                 Controller = "Admin",
-                RouteValues = new System.Web.Routing.RouteValueDictionary(new { search = ViewBag.Search, rolId = ViewBag.RolId, activo = ViewBag.Activo })
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { search = ViewBag.Search, rolId = ViewBag.RolId, activo = ViewBag.Activo, sortBy = ViewBag.SortBy, sortDir = ViewBag.SortDir })
             })
         }
         else

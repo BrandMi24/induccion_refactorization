@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data.Entity;
 using System.IO;
 using System.Linq;
@@ -16,6 +17,8 @@ namespace induccion_refactorization.Controllers
     {
         private CaptacionDbContext db = new CaptacionDbContext();
 
+        private const int CursosPreviewCount = 2;
+
         // GET: /Aspirante/Index
         public ActionResult Index()
         {
@@ -23,7 +26,6 @@ namespace induccion_refactorization.Controllers
             {
                 NombreCompleto = Session["NombreCompleto"] as string,
                 Email = Session["Email"] as string,
-                Matricula = Session["Matricula"] as string,
                 Folio = Session["Folio"] as string
             };
 
@@ -37,31 +39,9 @@ namespace induccion_refactorization.Controllers
                     return View(model);
                 }
 
-                // Get all assigned subjects with progress information
-                var aspirante = db.Aspirantes
-                    .Include(a => a.Usuario)
-                    .Include(a => a.Ind_ProgresoAspirantes.Select(p => p.Ind_Unidad.Ind_Materia))
-                    .FirstOrDefault(a => a.AspiranteID == aspiranteId);
-
-                if (aspirante == null)
-                {
-                    ViewBag.Error = "Perfil de aspirante no encontrado.";
-                    return View(model);
-                }
-
-                // Group progress by materia and calculate completion percentage
-                model.MateriasProgreso = aspirante.Ind_ProgresoAspirantes
-                    .Where(p => p.Ind_Unidad != null && p.Ind_Unidad.Ind_Materia != null)
-                    .GroupBy(p => p.Ind_Unidad.Ind_Materia)
-                    .Select(g => new MateriaProgresoViewModel
-                    {
-                        Materia = g.Key,
-                        TotalUnidades = g.Count(),
-                        UnidadesCompletadas = g.Count(p => p.Estado == "Calificado"),
-                        PromedioCalificacion = g.Where(p => p.Calificacion.HasValue).Average(p => p.Calificacion),
-                        ProgresoAspirantes = g.ToList()
-                    })
-                    .ToList();
+                // Full list feeds the "ver más" modal; the page itself only shows a preview.
+                model.MateriasProgreso = GetMateriasProgreso(aspiranteId.Value);
+                ViewBag.CursosPreviewCount = CursosPreviewCount;
 
                 return View(model);
             }
@@ -70,6 +50,32 @@ namespace induccion_refactorization.Controllers
                 ViewBag.Error = $"Error al cargar datos: {ex.Message} {ex.InnerException?.InnerException?.Message ?? ex.InnerException?.Message}";
                 return View(model);
             }
+        }
+
+        private List<MateriaProgresoViewModel> GetMateriasProgreso(int aspiranteId)
+        {
+            var aspirante = db.Aspirantes
+                .Include(a => a.Ind_ProgresoAspirantes.Select(p => p.Ind_Unidad.Ind_Materia))
+                .FirstOrDefault(a => a.AspiranteID == aspiranteId);
+
+            if (aspirante == null)
+            {
+                return new List<MateriaProgresoViewModel>();
+            }
+
+            return aspirante.Ind_ProgresoAspirantes
+                .Where(p => p.Ind_Unidad != null && p.Ind_Unidad.Ind_Materia != null)
+                .GroupBy(p => p.Ind_Unidad.Ind_Materia)
+                .Select(g => new MateriaProgresoViewModel
+                {
+                    Materia = g.Key,
+                    TotalUnidades = g.Count(),
+                    UnidadesCompletadas = g.Count(p => p.Estado == "Calificado"),
+                    PromedioCalificacion = g.Where(p => p.Calificacion.HasValue).Average(p => p.Calificacion),
+                    ProgresoAspirantes = g.ToList()
+                })
+                .OrderBy(m => m.Materia.Nombre)
+                .ToList();
         }
 
         // GET: /Aspirante/MateriaDetails/5
@@ -250,6 +256,37 @@ namespace induccion_refactorization.Controllers
                 var submision = db.Ind_Submisiones
                     .FirstOrDefault(s => s.AspiranteID == aspiranteId && s.EntregableID == id);
 
+                // Record the file in the shared Documentos table (rich metadata + versioning)
+                var tipoDocumento = DocumentoHelper.GetOrCreateTipoDocumento(db, DocumentoHelper.TipoEntregableInduccion);
+                var estadoDocumento = DocumentoHelper.GetOrCreateEstadoDocumento(db, DocumentoHelper.EstadoPendiente);
+
+                var previousDocumento = submision?.DocumentoID != null
+                    ? db.Documentos.Find(submision.DocumentoID)
+                    : null;
+
+                if (previousDocumento != null)
+                {
+                    previousDocumento.VersionActual = false;
+                }
+
+                var documento = new Documento
+                {
+                    NombreOriginal = Path.GetFileName(archivo.FileName),
+                    ExtensionArchivo = Path.GetExtension(archivo.FileName).ToLowerInvariant(),
+                    TipoMIME = System.Web.MimeMapping.GetMimeMapping(archivo.FileName),
+                    TamanoArchivoBytes = archivo.ContentLength,
+                    RutaAlmacenamiento = rutaRelativa,
+                    HashArchivo = DocumentoHelper.ComputeSha256Hash(fullPath),
+                    FechaSubida = DateTime.Now,
+                    NumeroVersion = (previousDocumento?.NumeroVersion ?? 0) + 1,
+                    VersionActual = true,
+                    AspiranteID = aspiranteId.Value,
+                    TipoDocumentoID = tipoDocumento.TipoDocumentoID,
+                    EstadoDocumentoID = estadoDocumento.EstadoDocumentoID,
+                    UsuarioID = Session["UsuarioID"] as int?
+                };
+                db.Documentos.Add(documento);
+
                 if (submision == null)
                 {
                     submision = new Ind_Submision
@@ -273,6 +310,8 @@ namespace induccion_refactorization.Controllers
                     submision.UsuarioRevisorID = null;
                     submision.FechaRevision = null;
                 }
+
+                submision.Documento = documento;
 
                 db.SaveChanges();
 
@@ -299,6 +338,7 @@ namespace induccion_refactorization.Controllers
             }
 
             var submision = db.Ind_Submisiones
+                .Include(s => s.Documento)
                 .FirstOrDefault(s => s.SubmisionID == id && s.AspiranteID == aspiranteId);
 
             if (submision == null)
@@ -307,14 +347,18 @@ namespace induccion_refactorization.Controllers
                 return RedirectToAction("Index");
             }
 
-            var fullPath = Server.MapPath(submision.RutaArchivo);
+            var rutaArchivo = submision.Documento?.RutaAlmacenamiento ?? submision.RutaArchivo;
+            var nombreDescarga = submision.Documento?.NombreOriginal ?? Path.GetFileName(rutaArchivo);
+            var tipoMime = submision.Documento?.TipoMIME ?? "application/octet-stream";
+
+            var fullPath = Server.MapPath(rutaArchivo);
             if (!System.IO.File.Exists(fullPath))
             {
                 TempData["Error"] = "El archivo ya no está disponible en el servidor.";
                 return RedirectToAction("Index");
             }
 
-            return File(fullPath, "application/octet-stream", Path.GetFileName(fullPath));
+            return File(fullPath, tipoMime, nombreDescarga);
         }
 
         protected override void Dispose(bool disposing)

@@ -43,7 +43,7 @@ namespace induccion_refactorization.Models
         public string Telefono { get; set; }
 
         [Required]
-        [StringLength(255)]
+        [StringLength(255, MinimumLength = 8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres.")]
         public string Contrasena { get; set; }
 
         public bool Activo { get; set; }

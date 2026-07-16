@@ -65,7 +65,7 @@
                     <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
                         <i class="fas fa-search"></i> Filtrar
                     </button>
-                    <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-sm btn-outline-secondary" title="Limpiar filtros">
+                    <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-sm btn-outline-secondary btn-icon" title="Limpiar filtros">
                         <i class="fas fa-times"></i>
                     </a>
                 </div>
@@ -86,10 +86,42 @@
                 <table class="table table-hover table-clean mb-0">
                     <thead>
                         <tr>
-                            <th>Nombre</th>
-                            <th>Carrera</th>
-                            <th>Periodo</th>
-                            <th>Unidades</th>
+                            @{
+                                var sortRouteValues = new System.Web.Routing.RouteValueDictionary(new
+                                {
+                                    search = ViewBag.Search,
+                                    carreraId = ViewBag.CarreraId,
+                                    periodoId = ViewBag.PeriodoId
+                                });
+                            }
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Nombre", SortField = "Nombre", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "Index", Controller = "InductionMaintenance", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Carrera", SortField = "Carrera", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "Index", Controller = "InductionMaintenance", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Periodo", SortField = "Periodo", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "Index", Controller = "InductionMaintenance", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Unidades", SortField = "Unidades", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "Index", Controller = "InductionMaintenance", RouteValues = sortRouteValues
+                                })
+                            </th>
                             <th>Descripción</th>
                             <th class="text-end">Acciones</th>
                         </tr>
@@ -99,7 +131,19 @@
                         {
                             <tr>
                                 <td><strong>@materia.Nombre</strong></td>
-                                <td><span class="badge bg-info">@(materia.Carrera?.Nombre)</span></td>
+                                <td>
+                                    @if (materia.TodasLasCarreras)
+                                    {
+                                        <span class="badge bg-info">Todas las carreras</span>
+                                    }
+                                    else
+                                    {
+                                        foreach (var carrera in materia.Carreras)
+                                        {
+                                            <span class="badge bg-info me-1">@carrera.Nombre</span>
+                                        }
+                                    }
+                                </td>
                                 <td><span class="badge bg-secondary">@(materia.Periodo?.Nombre)</span></td>
                                 <td><span class="badge bg-primary">@materia.Ind_Unidades.Count</span></td>
                                 <td>
@@ -119,7 +163,7 @@
                                         <i class="fas fa-list"></i> Unidades
                                     </a>
                                     <a href="@Url.Action("EditMateria", new { id = materia.MateriaID })"
-                                       class="btn btn-sm btn-outline-secondary"
+                                       class="btn btn-sm btn-outline-secondary btn-icon"
                                        title="Editar Materia">
                                         <i class="fas fa-edit"></i>
                                     </a>
@@ -127,7 +171,7 @@
                                     {
                                         @Html.AntiForgeryToken()
                                         <button type="submit"
-                                                class="btn btn-sm btn-outline-danger"
+                                                class="btn btn-sm btn-outline-danger btn-icon"
                                                 title="Desactivar Materia"
                                                 onclick="return confirm('¿Está seguro de desactivar esta materia?');">
                                             <i class="fas fa-trash"></i>
@@ -143,9 +187,10 @@
             {
                 PageNumber = Model.PageNumber,
                 TotalPages = Model.TotalPages,
+                PageSize = Model.PageSize,
                 Action = "Index",
                 Controller = "InductionMaintenance",
-                RouteValues = new System.Web.Routing.RouteValueDictionary(new { search = ViewBag.Search, carreraId = ViewBag.CarreraId, periodoId = ViewBag.PeriodoId })
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { search = ViewBag.Search, carreraId = ViewBag.CarreraId, periodoId = ViewBag.PeriodoId, sortBy = ViewBag.SortBy, sortDir = ViewBag.SortDir })
             })
         }
         else

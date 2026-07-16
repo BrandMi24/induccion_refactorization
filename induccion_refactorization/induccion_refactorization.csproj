@@ -126,10 +126,14 @@
     <Compile Include="Controllers\InductionMaintenanceController.cs" />
     <Compile Include="Controllers\PerfilController.cs" />
     <Compile Include="Filters\RoleAuthorizeAttribute.cs" />
+    <Compile Include="Helpers\DocumentoHelper.cs" />
     <Compile Include="Helpers\FileUploadValidator.cs" />
+    <Compile Include="Helpers\PasswordHasher.cs" />
     <Compile Include="Models\Aspirante.cs" />
     <Compile Include="Models\CaptacionDbContext.cs" />
     <Compile Include="Models\Carrera.cs" />
+    <Compile Include="Models\Documento.cs" />
+    <Compile Include="Models\EstadoDocumento.cs" />
     <Compile Include="Models\Ind_Entregable.cs" />
     <Compile Include="Models\Ind_Materia.cs" />
     <Compile Include="Models\Ind_Material.cs" />
@@ -138,10 +142,13 @@
     <Compile Include="Models\Ind_Unidad.cs" />
     <Compile Include="Models\Periodo.cs" />
     <Compile Include="Models\Role.cs" />
+    <Compile Include="Models\TipoDocumento.cs" />
     <Compile Include="Models\Usuario.cs" />
     <Compile Include="ViewModels\AspiranteDashboardViewModel.cs" />
     <Compile Include="ViewModels\DirectorDashboardViewModel.cs" />
     <Compile Include="ViewModels\PagedResult.cs" />
+    <Compile Include="ViewModels\SortableHeaderViewModel.cs" />
+    <Compile Include="ViewModels\ReportesViewModel.cs" />
     <Compile Include="ViewModels\LoginViewModel.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -198,15 +205,18 @@
     <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Home\About.cshtml" />
     <Content Include="Views\Home\Contact.cshtml" />
-    <Content Include="Views\Home\Index.cshtml" />
     <Content Include="Views\Perfil\Index.cshtml" />
     <Content Include="Views\Perfil\Edit.cshtml" />
     <Content Include="Views\Account\Login.cshtml" />
     <Content Include="Views\Admin\Index.cshtml" />
     <Content Include="Views\Admin\GestionUsuarios.cshtml" />
     <Content Include="Views\Admin\Permisos.cshtml" />
+    <Content Include="Views\Admin\Reportes.cshtml" />
     <Content Include="Views\Admin\CreateUsuario.cshtml" />
     <Content Include="Views\Admin\EditUsuario.cshtml" />
+    <Content Include="Views\Admin\GestionPeriodos.cshtml" />
+    <Content Include="Views\Admin\CreatePeriodo.cshtml" />
+    <Content Include="Views\Admin\EditPeriodo.cshtml" />
     <Content Include="Views\Aspirante\Index.cshtml" />
     <Content Include="Views\Aspirante\MateriaDetails.cshtml" />
     <Content Include="Views\Aspirante\UploadEntregable.cshtml" />
@@ -227,6 +237,7 @@
     <Content Include="Views\Shared\_LoginPartial.cshtml" />
     <Content Include="Views\Shared\_Alerts.cshtml" />
     <Content Include="Views\Shared\_Pager.cshtml" />
+    <Content Include="Views\Shared\_SortableHeader.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

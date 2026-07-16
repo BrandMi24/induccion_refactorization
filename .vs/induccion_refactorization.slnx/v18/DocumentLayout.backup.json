@@ -36,9 +36,9 @@
               "RelativeDocumentMoniker": "induccion_refactorization\\Models\\Ind_Unidad.cs",
               "ToolTip": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Models\\Ind_Unidad.cs",
               "RelativeToolTip": "induccion_refactorization\\Models\\Ind_Unidad.cs",
-              "ViewState": "AgIAABsAAAAAAAAAAAAiwCoAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAABfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-12T20:00:48.036Z",
+              "WhenOpened": "2026-07-16T17:50:13.996Z",
               "EditorCaption": ""
             },
             {
@@ -51,7 +51,7 @@
               "RelativeToolTip": "induccion_refactorization\\Models\\Aspirante.cs",
               "ViewState": "AgIAAEkAAAAAAAAAAAAhwFwAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-12T20:00:48.039Z"
+              "WhenOpened": "2026-07-16T17:50:14.001Z"
             },
             {
               "$type": "Document",
@@ -63,7 +63,7 @@
               "RelativeToolTip": "induccion_refactorization\\Controllers\\AspiranteController.cs",
               "ViewState": "AgIAAFAAAAAAAAAAAAAhwF4AAABBAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-12T20:00:48.04Z"
+              "WhenOpened": "2026-07-16T17:50:14.001Z"
             },
             {
               "$type": "Document",
@@ -75,7 +75,7 @@
               "RelativeToolTip": "induccion_refactorization\\Models\\Usuario.cs",
               "ViewState": "AgIAADUAAAAAAAAAAAArwEYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-12T20:00:48.04Z"
+              "WhenOpened": "2026-07-16T17:50:14.002Z"
             }
           ]
         }

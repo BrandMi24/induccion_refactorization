@@ -10,7 +10,7 @@ namespace induccion_refactorization.Controllers
     {
         public ActionResult Index()
         {
-            return View();
+            return RedirectToAction("Login", "Account");
         }
 
         public ActionResult About()

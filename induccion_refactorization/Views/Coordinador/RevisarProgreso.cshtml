@@ -1,4 +1,4 @@
-@model IEnumerable<induccion_refactorization.Models.Ind_ProgresoAspirante>
+@model induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_ProgresoAspirante>
 @{
     ViewBag.Title = "Revisar Progreso de Unidades";
 }
@@ -11,26 +11,85 @@
     <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
 </div>
 
+<div class="card mb-3">
+    <div class="card-body py-3">
+        @using (Html.BeginForm("RevisarProgreso", "Coordinador", FormMethod.Get))
+        {
+            <div class="row g-2 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label small text-muted mb-1">Buscar</label>
+                    <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm"
+                           placeholder="Aspirante o unidad..." />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted mb-1">Materia</label>
+                    @Html.DropDownList("materiaId", (SelectList)ViewBag.MateriasFiltro, "Todas las materias", new { @class = "form-select form-select-sm" })
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="@Url.Action("RevisarProgreso", "Coordinador")" class="btn btn-sm btn-outline-secondary btn-icon" title="Limpiar filtros">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">Unidades (@Model.Count())</h5>
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="mb-0">Unidades</h5>
+        <small class="text-muted">@Model.TotalCount resultado(s)</small>
     </div>
     <div class="card-body p-0">
-        @if (Model != null && Model.Any())
+        @if (Model.Items.Any())
         {
             <div class="table-responsive">
                 <table class="table table-hover table-clean mb-0">
                     <thead>
                         <tr>
-                            <th>Aspirante</th>
-                            <th>Materia</th>
-                            <th>Unidad</th>
-                            <th>Fecha de Entrega</th>
+                            @{
+                                var sortRouteValues = new System.Web.Routing.RouteValueDictionary(new
+                                {
+                                    search = ViewBag.Search,
+                                    materiaId = ViewBag.MateriaId
+                                });
+                            }
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Aspirante", SortField = "Aspirante", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "RevisarProgreso", Controller = "Coordinador", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Materia", SortField = "Materia", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "RevisarProgreso", Controller = "Coordinador", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Unidad", SortField = "Unidad", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "RevisarProgreso", Controller = "Coordinador", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Fecha de Entrega", SortField = "Fecha", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "RevisarProgreso", Controller = "Coordinador", RouteValues = sortRouteValues
+                                })
+                            </th>
                             <th class="text-end">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var progreso in Model)
+                        @foreach (var progreso in Model.Items)
                         {
                             <tr>
                                 <td>
@@ -55,6 +114,15 @@
                     </tbody>
                 </table>
             </div>
+            @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
+            {
+                PageNumber = Model.PageNumber,
+                TotalPages = Model.TotalPages,
+                PageSize = Model.PageSize,
+                Action = "RevisarProgreso",
+                Controller = "Coordinador",
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { search = ViewBag.Search, materiaId = ViewBag.MateriaId, sortBy = ViewBag.SortBy, sortDir = ViewBag.SortDir })
+            })
         }
         else
         {

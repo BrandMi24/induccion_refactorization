@@ -1,0 +1,17 @@
+@model induccion_refactorization.ViewModels.SortableHeaderViewModel
+@{
+    var isActive = string.Equals(Model.CurrentSortBy, Model.SortField, System.StringComparison.OrdinalIgnoreCase);
+    var nextDir = isActive && Model.CurrentSortDir == "asc" ? "desc" : "asc";
+    var icon = !isActive ? "fa-sort" : (Model.CurrentSortDir == "asc" ? "fa-sort-up" : "fa-sort-down");
+
+    var rv = new System.Web.Routing.RouteValueDictionary(Model.RouteValues)
+    {
+        ["sortBy"] = Model.SortField,
+        ["sortDir"] = nextDir,
+        ["page"] = 1
+    };
+}
+
+<a href="@Url.Action(Model.Action, Model.Controller, rv)" class="sortable-header">
+    @Model.Label <i class="fas @icon @(isActive ? "text-primary" : "text-muted")"></i>
+</a>
