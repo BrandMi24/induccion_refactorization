@@ -37,7 +37,7 @@
                         @foreach (var periodo in Model)
                         {
                             <tr>
-                                <td>
+                                <td data-label="Periodo">
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="icon-badge icon-badge-sm icon-badge-primary">
                                             <i class="fas fa-calendar-alt"></i>
@@ -45,10 +45,10 @@
                                         <div class="fw-semibold">@periodo.Nombre</div>
                                     </div>
                                 </td>
-                                <td>@periodo.FechaInicio.ToString("dd/MM/yyyy")</td>
-                                <td>@periodo.FechaFin.ToString("dd/MM/yyyy")</td>
-                                <td class="text-center">@periodo.Ind_Materias.Count</td>
-                                <td class="text-center">
+                                <td data-label="Fecha Inicio">@periodo.FechaInicio.ToString("dd/MM/yyyy")</td>
+                                <td data-label="Fecha Fin">@periodo.FechaFin.ToString("dd/MM/yyyy")</td>
+                                <td class="text-center" data-label="Materias Asignadas">@periodo.Ind_Materias.Count</td>
+                                <td class="text-center" data-label="Estado">
                                     @if (periodo.Activo)
                                     {
                                         <span class="badge bg-success">Activo</span>
@@ -58,7 +58,7 @@
                                         <span class="badge bg-secondary">Inactivo</span>
                                     }
                                 </td>
-                                <td class="text-end">
+                                <td class="text-end" data-label="Acciones">
                                     <a href="@Url.Action("EditPeriodo", new { id = periodo.PeriodoID })"
                                        class="btn btn-sm btn-outline-secondary btn-icon"
                                        title="Editar Periodo">

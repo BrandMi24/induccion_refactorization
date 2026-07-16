@@ -64,46 +64,48 @@
                 <div class="card-body">
                     @if (unidad.Ind_Materiales != null && unidad.Ind_Materiales.Any())
                     {
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th>Tipo</th>
-                                    <th>URL</th>
-                                    <th class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var material in unidad.Ind_Materiales)
-                                {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
                                     <tr>
-                                        <td>
-                                            <i class="fas fa-file"></i>
-                                            @material.Nombre
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info">@material.TipoRecurso</span>
-                                        </td>
-                                        <td>
-                                            <a href="@material.RutaURL" target="_blank" class="text-truncate d-inline-block" style="max-width: 300px;">
-                                                @material.RutaURL
-                                            </a>
-                                        </td>
-                                        <td class="text-center">
-                                            @using (Html.BeginForm("DeleteMaterial", "InductionMaintenance", new { id = material.MaterialID }, FormMethod.Post, new { @class = "d-inline" }))
-                                            {
-                                                @Html.AntiForgeryToken()
-                                                <button type="submit" 
-                                                        class="btn btn-sm btn-danger btn-icon" 
-                                                        onclick="return confirm('¿Eliminar este material?');">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            }
-                                        </td>
+                                        <th>Nombre</th>
+                                        <th>Tipo</th>
+                                        <th>URL</th>
+                                        <th class="text-center">Acciones</th>
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    @foreach (var material in unidad.Ind_Materiales)
+                                    {
+                                        <tr>
+                                            <td data-label="Nombre">
+                                                <i class="fas fa-file"></i>
+                                                @material.Nombre
+                                            </td>
+                                            <td data-label="Tipo">
+                                                <span class="badge bg-info">@material.TipoRecurso</span>
+                                            </td>
+                                            <td data-label="URL">
+                                                <a href="@material.RutaURL" target="_blank" class="text-truncate d-inline-block" style="max-width: 300px;">
+                                                    @material.RutaURL
+                                                </a>
+                                            </td>
+                                            <td class="text-center" data-label="Acciones">
+                                                @using (Html.BeginForm("DeleteMaterial", "InductionMaintenance", new { id = material.MaterialID }, FormMethod.Post, new { @class = "d-inline" }))
+                                                {
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit"
+                                                            class="btn btn-sm btn-danger btn-icon"
+                                                            onclick="return confirm('¿Eliminar este material?');">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
                     }
                     else
                     {
@@ -118,42 +120,44 @@
                     <h6><i class="fas fa-file-upload"></i> Entregables</h6>
                     @if (entregablesActivos != null && entregablesActivos.Any())
                     {
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Título</th>
-                                    <th>Fecha Límite</th>
-                                    <th>Ponderación</th>
-                                    <th class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var entregable in entregablesActivos)
-                                {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
                                     <tr>
-                                        <td>
-                                            <i class="fas fa-file-alt"></i>
-                                            @entregable.Titulo
-                                        </td>
-                                        <td>
-                                            @(entregable.FechaLimite.HasValue ? entregable.FechaLimite.Value.ToString("dd/MM/yyyy") : "Sin límite")
-                                        </td>
-                                        <td>@entregable.PonderacionMax.ToString("F2")</td>
-                                        <td class="text-center">
-                                            @using (Html.BeginForm("DeleteEntregable", "InductionMaintenance", new { id = entregable.EntregableID }, FormMethod.Post, new { @class = "d-inline" }))
-                                            {
-                                                @Html.AntiForgeryToken()
-                                                <button type="submit"
-                                                        class="btn btn-sm btn-danger btn-icon"
-                                                        onclick="return confirm('¿Eliminar este entregable?');">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            }
-                                        </td>
+                                        <th>Título</th>
+                                        <th>Fecha Límite</th>
+                                        <th>Ponderación</th>
+                                        <th class="text-center">Acciones</th>
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    @foreach (var entregable in entregablesActivos)
+                                    {
+                                        <tr>
+                                            <td data-label="Título">
+                                                <i class="fas fa-file-alt"></i>
+                                                @entregable.Titulo
+                                            </td>
+                                            <td data-label="Fecha Límite">
+                                                @(entregable.FechaLimite.HasValue ? entregable.FechaLimite.Value.ToString("dd/MM/yyyy") : "Sin límite")
+                                            </td>
+                                            <td data-label="Ponderación">@entregable.PonderacionMax.ToString("F2")</td>
+                                            <td class="text-center" data-label="Acciones">
+                                                @using (Html.BeginForm("DeleteEntregable", "InductionMaintenance", new { id = entregable.EntregableID }, FormMethod.Post, new { @class = "d-inline" }))
+                                                {
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit"
+                                                            class="btn btn-sm btn-danger btn-icon"
+                                                            onclick="return confirm('¿Eliminar este entregable?');">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
                     }
                     else
                     {

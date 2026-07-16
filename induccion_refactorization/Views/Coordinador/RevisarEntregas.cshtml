@@ -92,7 +92,7 @@
                         @foreach (var submision in Model.Items)
                         {
                             <tr>
-                                <td>
+                                <td data-label="Aspirante">
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="icon-badge icon-badge-sm icon-badge-primary">
                                             <i class="fas fa-user"></i>
@@ -100,10 +100,10 @@
                                         <span>@(submision.Aspirante?.Usuario?.NombreCompleto)</span>
                                     </div>
                                 </td>
-                                <td>@(submision.Ind_Entregable?.Ind_Unidad?.Ind_Materia?.Nombre)</td>
-                                <td>@(submision.Ind_Entregable?.Titulo)</td>
-                                <td>@submision.FechaEnvio.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td class="text-end">
+                                <td data-label="Materia">@(submision.Ind_Entregable?.Ind_Unidad?.Ind_Materia?.Nombre)</td>
+                                <td data-label="Entregable">@(submision.Ind_Entregable?.Titulo)</td>
+                                <td data-label="Fecha de Envío">@submision.FechaEnvio.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-end" data-label="Acciones">
                                     <a href="@Url.Action("DownloadSubmission", new { id = submision.SubmisionID })"
                                        class="btn btn-sm btn-outline-secondary btn-icon" title="Descargar archivo">
                                         <i class="fas fa-download"></i>

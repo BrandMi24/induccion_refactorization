@@ -92,7 +92,7 @@
                         @foreach (var progreso in Model.Items)
                         {
                             <tr>
-                                <td>
+                                <td data-label="Aspirante">
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="icon-badge icon-badge-sm icon-badge-primary">
                                             <i class="fas fa-user"></i>
@@ -100,10 +100,10 @@
                                         <span>@(progreso.Aspirante?.Usuario?.NombreCompleto)</span>
                                     </div>
                                 </td>
-                                <td>@(progreso.Ind_Unidad?.Ind_Materia?.Nombre)</td>
-                                <td>@(progreso.Ind_Unidad?.Nombre)</td>
-                                <td>@(progreso.FechaEnvio?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</td>
-                                <td class="text-end">
+                                <td data-label="Materia">@(progreso.Ind_Unidad?.Ind_Materia?.Nombre)</td>
+                                <td data-label="Unidad">@(progreso.Ind_Unidad?.Nombre)</td>
+                                <td data-label="Fecha de Entrega">@(progreso.FechaEnvio?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</td>
+                                <td class="text-end" data-label="Acciones">
                                     <a href="@Url.Action("CalificarProgreso", new { id = progreso.ProgresoID })"
                                        class="btn btn-sm btn-primary" title="Calificar">
                                         <i class="fas fa-star"></i> Calificar

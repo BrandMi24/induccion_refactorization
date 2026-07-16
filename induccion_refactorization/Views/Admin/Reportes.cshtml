@@ -168,8 +168,8 @@
                         @foreach (var materia in Model.MateriasConProgreso)
                         {
                             <tr>
-                                <td>@materia.Nombre</td>
-                                <td>
+                                <td data-label="Materia">@materia.Nombre</td>
+                                <td data-label="Progreso">
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="progress flex-grow-1" style="height: 8px;">
                                             <div class="progress-bar bg-primary" role="progressbar" style="width: @(materia.Porcentaje)%;"></div>

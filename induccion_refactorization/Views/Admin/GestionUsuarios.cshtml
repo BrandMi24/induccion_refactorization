@@ -120,7 +120,7 @@
                         @foreach (var usuario in Model.Items)
                         {
                             <tr>
-                                <td>
+                                <td data-label="Usuario">
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="icon-badge icon-badge-sm icon-badge-primary">
                                             <i class="fas fa-user"></i>
@@ -131,11 +131,11 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td>@usuario.CorreoElectronico</td>
-                                <td>
+                                <td data-label="Correo">@usuario.CorreoElectronico</td>
+                                <td data-label="Rol">
                                     <span class="badge bg-info">@(usuario.Role?.Nombre)</span>
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center" data-label="Estado">
                                     @if (usuario.Activo)
                                     {
                                         <span class="badge bg-success">Activo</span>
@@ -145,7 +145,7 @@
                                         <span class="badge bg-secondary">Inactivo</span>
                                     }
                                 </td>
-                                <td class="text-end">
+                                <td class="text-end" data-label="Acciones">
                                     <a href="@Url.Action("EditUsuario", new { id = usuario.UsuarioID })"
                                        class="btn btn-sm btn-outline-secondary btn-icon"
                                        title="Editar Usuario">

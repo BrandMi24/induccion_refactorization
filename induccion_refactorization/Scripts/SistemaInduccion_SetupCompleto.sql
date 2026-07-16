@@ -303,9 +303,10 @@ ELSE
     UPDATE dbo.Usuarios SET Contrasena = 'Password123!', RolID = 3, Activo = 1 WHERE CorreoElectronico = 'coordinador@test.com';
 
 PRINT 'Usuarios de prueba (Admin, Director, Coordinador, Aspirante) listos.';
-GO
 
 -- 2.3 Materias, unidades y materiales de ejemplo ------------------------------
+-- (sin GO antes de esta sección: @TargetAspiranteID se sigue usando en el
+-- paso 2.4 más abajo, y las variables locales no sobreviven a un GO)
 DECLARE @MateriaID1 INT, @MateriaID2 INT, @MateriaID3 INT, @PeriodoID INT;
 
 -- Reutilizamos un Periodo activo ya existente; si no hay ninguno (base nueva

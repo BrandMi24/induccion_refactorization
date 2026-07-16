@@ -130,8 +130,8 @@
                         @foreach (var materia in Model.Items)
                         {
                             <tr>
-                                <td><strong>@materia.Nombre</strong></td>
-                                <td>
+                                <td data-label="Nombre"><strong>@materia.Nombre</strong></td>
+                                <td data-label="Carrera">
                                     @if (materia.TodasLasCarreras)
                                     {
                                         <span class="badge bg-info">Todas las carreras</span>
@@ -144,9 +144,9 @@
                                         }
                                     }
                                 </td>
-                                <td><span class="badge bg-secondary">@(materia.Periodo?.Nombre)</span></td>
-                                <td><span class="badge bg-primary">@materia.Ind_Unidades.Count</span></td>
-                                <td>
+                                <td data-label="Periodo"><span class="badge bg-secondary">@(materia.Periodo?.Nombre)</span></td>
+                                <td data-label="Unidades"><span class="badge bg-primary">@materia.Ind_Unidades.Count</span></td>
+                                <td data-label="Descripción">
                                     @if (!string.IsNullOrEmpty(materia.Descripcion))
                                     {
                                         <small>@(materia.Descripcion.Length > 80 ? materia.Descripcion.Substring(0, 80) + "..." : materia.Descripcion)</small>
@@ -156,7 +156,7 @@
                                         <small class="text-muted">Sin descripción</small>
                                     }
                                 </td>
-                                <td class="text-end">
+                                <td class="text-end" data-label="Acciones">
                                     <a href="@Url.Action("ManageUnidades", new { id = materia.MateriaID })"
                                        class="btn btn-sm btn-primary"
                                        title="Gestionar Unidades">
