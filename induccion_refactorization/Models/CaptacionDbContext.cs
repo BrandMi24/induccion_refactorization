@@ -29,6 +29,11 @@ namespace induccion_refactorization.Models
         public virtual DbSet<Ind_Entregable> Ind_Entregables { get; set; }
         public virtual DbSet<Ind_Submision> Ind_Submisiones { get; set; }
 
+        // Permission System Tables
+        public virtual DbSet<Ind_Permiso> Ind_Permisos { get; set; }
+        public virtual DbSet<Ind_RolPermiso> Ind_RolPermisos { get; set; }
+        public virtual DbSet<Ind_UsuarioPermiso> Ind_UsuarioPermisos { get; set; }
+
         // Document Management Tables
         public virtual DbSet<Documento> Documentos { get; set; }
         public virtual DbSet<TipoDocumento> TiposDocumentos { get; set; }
@@ -60,6 +65,37 @@ namespace induccion_refactorization.Models
             modelBuilder.Entity<Ind_Materia>()
                 .Property(e => e.Activo)
                 .IsRequired();
+
+            // Composite primary keys for the permission tables (no single [Key] property).
+            modelBuilder.Entity<Ind_RolPermiso>()
+                .HasKey(rp => new { rp.RolID, rp.PermisoID });
+
+            modelBuilder.Entity<Ind_UsuarioPermiso>()
+                .HasKey(up => new { up.UsuarioID, up.PermisoID });
+
+            modelBuilder.Entity<Ind_RolPermiso>()
+                .HasRequired(rp => rp.Role)
+                .WithMany(r => r.Ind_RolPermisos)
+                .HasForeignKey(rp => rp.RolID)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Ind_RolPermiso>()
+                .HasRequired(rp => rp.Ind_Permiso)
+                .WithMany(p => p.Ind_RolPermisos)
+                .HasForeignKey(rp => rp.PermisoID)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Ind_UsuarioPermiso>()
+                .HasRequired(up => up.Usuario)
+                .WithMany()
+                .HasForeignKey(up => up.UsuarioID)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Ind_UsuarioPermiso>()
+                .HasRequired(up => up.Ind_Permiso)
+                .WithMany(p => p.Ind_UsuarioPermisos)
+                .HasForeignKey(up => up.PermisoID)
+                .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<Ind_Unidad>()
                 .Property(e => e.Orden)
@@ -157,6 +193,17 @@ namespace induccion_refactorization.Models
                 {
                     map.ToTable("Ind_MateriaCarreras");
                     map.MapLeftKey("MateriaID");
+                    map.MapRightKey("CarreraID");
+                });
+
+            // Usuario <-> Carrera many-to-many (a qué carrera(s) está asignado un Coordinador/Maestro/Aspirante)
+            modelBuilder.Entity<Usuario>()
+                .HasMany(u => u.Carreras)
+                .WithMany(c => c.Usuarios)
+                .Map(map =>
+                {
+                    map.ToTable("Ind_UsuarioCarreras");
+                    map.MapLeftKey("UsuarioID");
                     map.MapRightKey("CarreraID");
                 });
 

@@ -14,7 +14,7 @@
 2. `Aspirante/MateriaDetails/{id}` — detalle de una materia: sus unidades, materiales de cada unidad, y entregables si los hay.
 3. Dos formas de completar una unidad, según si tiene entregable asociado o no:
    - **Sin entregable** — `MarcarEntregado`: el aspirante simplemente marca la unidad como `Entregado` (`Ind_ProgresoAspirante.Estado`); el Coordinador la califica después.
-   - **Con entregable** — `UploadEntregable`: el aspirante sube un archivo (PDF/DOCX/XLSX/JPG/PNG, máx. 10 MB, validado en `Helpers/FileUploadValidator.cs`). Esto crea/actualiza una fila en `Ind_Submisiones` y, en paralelo, una fila en la tabla `Documentos` ya existente en `CaptacionDB` (ver docs/BASE_DE_DATOS.md) con metadata completa (hash SHA-256, tamaño, tipo MIME, versión). Reenviar un archivo incrementa la versión y reinicia el estado a `Pendiente`.
+   - **Con entregable** — `UploadEntregable`: el aspirante sube un archivo (PDF/DOCX/XLSX/JPG/PNG, máx. 10 MB, validado en `Helpers/FileUploadValidator.cs`). Esto crea/actualiza una fila en `Ind_Submisiones` y, en paralelo, una fila en la tabla `Documentos` ya existente en la base de datos (ver docs/BASE_DE_DATOS.md) con metadata completa (hash SHA-256, tamaño, tipo MIME, versión). Reenviar un archivo incrementa la versión y reinicia el estado a `Pendiente`.
 4. `DownloadSubmission` — descarga su propio archivo entregado (valida que la submisión le pertenezca).
 
 ## Flujo del Coordinador

@@ -1,6 +1,6 @@
 @model induccion_refactorization.ViewModels.LoginViewModel
 @{
-    ViewBag.Title = "Iniciar Sesi&oacute;n";
+    ViewBag.Title = "Iniciar Sesión";
 }
 
 <div class="row justify-content-center mt-5">
@@ -8,7 +8,7 @@
         <div class="card shadow-sm">
             <div class="card-header text-center bg-white border-bottom">
                 <i class="fas fa-sign-in-alt text-primary mb-2" style="font-size: 2rem;"></i>
-                <h4 class="mb-0">Iniciar Sesi&oacute;n</h4>
+                <h4 class="mb-0">Iniciar Sesión</h4>
             </div>
             <div class="card-body p-4">
                 <p class="text-center text-muted mb-4">
@@ -38,7 +38,10 @@
                             <span class="input-group-text bg-light">
                                 <i class="fas fa-lock text-muted"></i>
                             </span>
-                            @Html.PasswordFor(m => m.Password, new { @class = "form-control", placeholder = "Ingresa tu contraseña", autocomplete = "current-password", required = "required" })
+                            @Html.PasswordFor(m => m.Password, new { @class = "form-control", id = "Password", placeholder = "Ingresa tu contraseña", autocomplete = "current-password", required = "required" })
+                            <button type="button" class="input-group-text bg-light" id="togglePassword" tabindex="-1" title="Mostrar/ocultar contraseña">
+                                <i class="fas fa-eye" id="togglePasswordIcon"></i>
+                            </button>
                         </div>
                         @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small" })
                     </div>
@@ -63,7 +66,7 @@
                 <div class="text-center">
                     <small class="text-muted">
                         <i class="fas fa-info-circle"></i>
-                        Si olvid&oacute; su contrase&ntilde;a, contacte al administrador del sistema
+                        Si olvidó su contraseña, contacte al administrador del sistema
                 </small>
                 </div>
             </div>
@@ -86,6 +89,16 @@
             // Auto-focus on email input
             $('#Email').focus();
 
+            // Mostrar/ocultar contraseña con un botón propio, para que no dependa
+            // del ícono nativo del navegador (que desaparece al perder el foco).
+            $('#togglePassword').on('click', function () {
+                var $password = $('#Password');
+                var $icon = $('#togglePasswordIcon');
+                var isHidden = $password.attr('type') === 'password';
+                $password.attr('type', isHidden ? 'text' : 'password');
+                $icon.toggleClass('fa-eye', !isHidden).toggleClass('fa-eye-slash', isHidden);
+            });
+
             // Handle form submission with loading state
             $('.login-form').on('submit', function() {
                 var $btn = $(this).find('button[type="submit"]');
@@ -96,6 +109,13 @@
     </script>
 
     <style>
+        /* Se usa un botón propio para mostrar/ocultar la contraseña; se oculta el
+           ícono nativo de Edge/IE para que no aparezcan los dos al mismo tiempo. */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+            display: none;
+        }
+
         /* Pristine Login Form Styles - UTTN Institutional Theme */
         .card {
             border-radius: 8px;
@@ -169,6 +189,18 @@
 
         .input-group .form-control {
             border-radius: 0 4px 4px 0;
+        }
+
+        /* El campo de contraseña queda entre el ícono de candado y el botón de
+           mostrar/ocultar, así que no debe llevar esquinas redondeadas propias. */
+        #Password {
+            border-radius: 0;
+        }
+
+        #togglePassword {
+            border-left: 0;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
         }
 
         .shadow-sm {

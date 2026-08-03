@@ -8,6 +8,11 @@
     <meta name="author" content="Universidad Tecnológica de Tamaulipas Norte">
     <title>@ViewBag.Title - Sistema de Inducción</title>
 
+    <link rel="icon" type="image/x-icon" href="@Url.Content("~/favicon.ico")" />
+    <link rel="icon" type="image/png" sizes="16x16" href="@Url.Content("~/Content/favicon-16.png")" />
+    <link rel="icon" type="image/png" sizes="32x32" href="@Url.Content("~/Content/favicon-32.png")" />
+    <link rel="apple-touch-icon" href="@Url.Content("~/Content/apple-touch-icon.png")" />
+
     <link rel="stylesheet" href="@Url.Content("~/Content/bootstrap.css")" />
     <link rel="stylesheet" href="@Url.Content("~/Content/site.css")?v=@System.IO.File.GetLastWriteTime(Server.MapPath("~/Content/site.css")).Ticks" />
     @Scripts.Render("~/bundles/modernizr")
@@ -36,7 +41,7 @@
         </div>
     </nav>
 
-    <div class="container-fluid body-content">
+    <div class="container body-content">
         @Html.Partial("_Alerts")
         @RenderBody()
     </div>
@@ -54,8 +59,12 @@
 
     <script>
         $(document).ready(function () {
+            // Solo los mensajes flash (_Alerts.cshtml, que siempre llevan también la
+            // clase alert-dismissible) se auto-ocultan; NO cualquier .alert de la
+            // página, porque varias vistas usan .alert de Bootstrap para contenido
+            // permanente (por ejemplo, dentro de modales) que no debe desaparecer solo.
             window.setTimeout(function () {
-                $(".alert").fadeTo(500, 0).slideUp(500, function () {
+                $(".alert.alert-dismissible").fadeTo(500, 0).slideUp(500, function () {
                     $(this).remove();
                 });
             }, 5000);

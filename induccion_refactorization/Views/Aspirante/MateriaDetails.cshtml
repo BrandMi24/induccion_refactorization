@@ -7,7 +7,7 @@
 }
 
 <div class="mb-3">
-    <a href="@Url.Action("Index", "Aspirante")" class="btn btn-link ps-0">
+    <a href="@Url.Action("Index", "Aspirante")" class="btn btn-outline-secondary btn-sm">
         <i class="fas fa-arrow-left"></i> Volver a Mis Cursos
     </a>
 </div>
@@ -200,10 +200,18 @@
                                                     }
                                                 </span>
                                             }
-                                            <a href="@Url.Action("UploadEntregable", "Aspirante", new { id = entregable.EntregableID })"
-                                               class="btn btn-sm btn-outline-primary">
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                    data-bs-toggle="modal" data-bs-target="#modalSubirEntregable"
+                                                    data-id="@entregable.EntregableID" data-titulo="@entregable.Titulo"
+                                                    data-instrucciones="@entregable.Instrucciones"
+                                                    data-fecha-limite="@(entregable.FechaLimite.HasValue ? entregable.FechaLimite.Value.ToString("dd/MM/yyyy") : "")"
+                                                    data-submision-existe="@(submision != null ? "true" : "false")"
+                                                    data-submision-fecha="@(submision?.FechaEnvio.ToString("dd/MM/yyyy HH:mm"))"
+                                                    data-submision-estado="@(submision?.Estado)"
+                                                    data-submision-calificacion="@(submision?.Calificacion.HasValue == true ? submision.Calificacion.Value.ToString("F2") : "")"
+                                                    data-submision-comentario="@(submision?.ComentarioRevisor)">
                                                 <i class="fas fa-upload"></i> @(submision == null ? "Subir" : "Reemplazar")
-                                            </a>
+                                            </button>
                                         </div>
                                     </li>
                                 }
@@ -281,6 +289,53 @@ else
     </div>
 }
 
+@* ===================== Modal: Subir/Reemplazar Entregable ===================== *@
+<div class="modal fade" id="modalSubirEntregable" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("UploadEntregable", "Aspirante", FormMethod.Post, new { enctype = "multipart/form-data" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="subirEntregableId" />
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-file-upload"></i> <span id="subirEntregableTitulo"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted" id="subirEntregableInstrucciones"></p>
+                    <p class="small" id="subirEntregableFechaLimiteWrapper">
+                        <strong>Fecha límite:</strong> <span id="subirEntregableFechaLimite"></span>
+                    </p>
+                    <div class="alert alert-info small" id="subirEntregableInfoExistente" style="display:none;">
+                        <i class="fas fa-info-circle"></i>
+                        Ya enviaste un archivo el <span id="subirEntregableFechaEnvio"></span>.
+                        Estado actual: <strong id="subirEntregableEstado"></strong>
+                        <span id="subirEntregableCalificacionWrapper" style="display:none;"> Calificación: <strong id="subirEntregableCalificacion"></strong></span>
+                        <br />
+                        Subir un nuevo archivo reemplazará el anterior y reiniciará la revisión.
+                    </div>
+                    <div class="alert alert-light small" id="subirEntregableComentarioWrapper" style="display:none;">
+                        <strong>Comentarios del revisor:</strong>
+                        <br />
+                        <em id="subirEntregableComentario"></em>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Archivo</label>
+                        <input type="file" name="archivo" class="form-control" required />
+                        <small class="form-text text-muted">
+                            Formatos aceptados: PDF, DOCX, XLSX, JPG, PNG. Tamaño máximo: 10 MB.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Enviar Archivo</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
 @section scripts {
     <script>
         function selectUnidad(link, evt) {
@@ -298,6 +353,32 @@ else
 
             return false;
         }
+
+        document.getElementById('modalSubirEntregable').addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            document.getElementById('subirEntregableId').value = button.dataset.id;
+            document.getElementById('subirEntregableTitulo').textContent = button.dataset.titulo || '';
+            document.getElementById('subirEntregableInstrucciones').textContent = button.dataset.instrucciones || '';
+
+            var fechaLimite = button.dataset.fechaLimite || '';
+            document.getElementById('subirEntregableFechaLimiteWrapper').style.display = fechaLimite ? '' : 'none';
+            document.getElementById('subirEntregableFechaLimite').textContent = fechaLimite;
+
+            var existe = button.dataset.submisionExiste === 'true';
+            document.getElementById('subirEntregableInfoExistente').style.display = existe ? '' : 'none';
+            if (existe) {
+                document.getElementById('subirEntregableFechaEnvio').textContent = button.dataset.submisionFecha || '';
+                document.getElementById('subirEntregableEstado').textContent = button.dataset.submisionEstado || '';
+
+                var calificacion = button.dataset.submisionCalificacion || '';
+                document.getElementById('subirEntregableCalificacionWrapper').style.display = calificacion ? '' : 'none';
+                document.getElementById('subirEntregableCalificacion').textContent = calificacion;
+            }
+
+            var comentario = button.dataset.submisionComentario || '';
+            document.getElementById('subirEntregableComentarioWrapper').style.display = comentario ? '' : 'none';
+            document.getElementById('subirEntregableComentario').textContent = comentario;
+        });
     </script>
 }
 

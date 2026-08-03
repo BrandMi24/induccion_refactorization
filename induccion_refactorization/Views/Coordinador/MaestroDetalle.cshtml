@@ -1,0 +1,164 @@
+@model induccion_refactorization.Models.Usuario
+@{
+    ViewBag.Title = "Detalle del Maestro";
+    var materiasResult = (induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_Materia>)ViewBag.MateriasResult;
+    var progresosResult = (induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_ProgresoAspirante>)ViewBag.ProgresosResult;
+    var entregasResult = (induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_Submision>)ViewBag.EntregasResult;
+}
+
+<div class="mb-4">
+    <a href="@Url.Action("MisMaestros", "Coordinador")" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left"></i> Volver a Mis Maestros
+    </a>
+    <h2 class="mb-1"><i class="fas fa-chalkboard-teacher text-primary"></i> @(Model.NombreCompleto)</h2>
+    <p class="text-muted mb-0"><i class="fas fa-envelope"></i> @(Model.CorreoElectronico)</p>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-book"></i> Materias Compartidas</h5>
+        <small class="text-muted">@materiasResult.TotalCount resultado(s)</small>
+    </div>
+    <div class="card-body p-0">
+        @if (materiasResult.Items.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th>Materia</th>
+                            <th class="text-center">Unidades</th>
+                            <th class="text-center">Entregables</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var materia in materiasResult.Items)
+                        {
+                            <tr>
+                                <td data-label="Materia">@materia.Nombre</td>
+                                <td class="text-center" data-label="Unidades">
+                                    <span class="badge bg-primary">@materia.Ind_Unidades.Count</span>
+                                </td>
+                                <td class="text-center" data-label="Entregables">
+                                    <span class="badge bg-warning">@materia.Ind_Unidades.SelectMany(u => u.Ind_Entregables.Where(e => e.Activo)).Count()</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
+            {
+                PageNumber = materiasResult.PageNumber,
+                TotalPages = materiasResult.TotalPages,
+                PageSize = materiasResult.PageSize,
+                Action = "MaestroDetalle",
+                Controller = "Coordinador",
+                PageParamName = "materiaPage",
+                PageSizeParamName = "materiaPageSize",
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, progresoPage = progresosResult.PageNumber, entregaPage = entregasResult.PageNumber })
+            })
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon-badge icon-badge-lg icon-badge-info">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="empty-state-title">Sin materias compartidas</div>
+                <p class="mb-0">No hay materias visibles para la(s) carrera(s) que comparten.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list-check"></i> Unidades Calificadas</h5>
+                <small class="text-muted">@progresosResult.TotalCount resultado(s)</small>
+            </div>
+            <div class="card-body p-0">
+                @if (progresosResult.Items.Any())
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var progreso in progresosResult.Items)
+                        {
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-semibold">@(progreso.Aspirante?.Usuario?.NombreCompleto)</div>
+                                        <small class="text-muted">@(progreso.Ind_Unidad?.Ind_Materia?.Nombre) &middot; @(progreso.Ind_Unidad?.Nombre)</small>
+                                    </div>
+                                    <span class="badge bg-success">@(progreso.Calificacion.HasValue ? progreso.Calificacion.Value.ToString("F2") : "-")</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                    @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
+                    {
+                        PageNumber = progresosResult.PageNumber,
+                        TotalPages = progresosResult.TotalPages,
+                        PageSize = progresosResult.PageSize,
+                        Action = "MaestroDetalle",
+                        Controller = "Coordinador",
+                        PageParamName = "progresoPage",
+                        PageSizeParamName = "progresoPageSize",
+                        RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, materiaPage = materiasResult.PageNumber, entregaPage = entregasResult.PageNumber })
+                    })
+                }
+                else
+                {
+                    <p class="text-muted small p-3 mb-0">Este maestro todavía no ha calificado ninguna unidad.</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-file-upload"></i> Entregas Calificadas</h5>
+                <small class="text-muted">@entregasResult.TotalCount resultado(s)</small>
+            </div>
+            <div class="card-body p-0">
+                @if (entregasResult.Items.Any())
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var submision in entregasResult.Items)
+                        {
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-semibold">@(submision.Aspirante?.Usuario?.NombreCompleto)</div>
+                                        <small class="text-muted">@(submision.Ind_Entregable?.Titulo)</small>
+                                    </div>
+                                    @{
+                                        var badgeClass = submision.Estado == "Revisado" ? "bg-success" : "bg-danger";
+                                    }
+                                    <span class="badge @badgeClass">@submision.Estado</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                    @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
+                    {
+                        PageNumber = entregasResult.PageNumber,
+                        TotalPages = entregasResult.TotalPages,
+                        PageSize = entregasResult.PageSize,
+                        Action = "MaestroDetalle",
+                        Controller = "Coordinador",
+                        PageParamName = "entregaPage",
+                        PageSizeParamName = "entregaPageSize",
+                        RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, materiaPage = materiasResult.PageNumber, progresoPage = progresosResult.PageNumber })
+                    })
+                }
+                else
+                {
+                    <p class="text-muted small p-3 mb-0">Este maestro todavía no ha calificado ninguna entrega.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

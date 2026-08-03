@@ -1,6 +1,6 @@
 # Esquema de base de datos
 
-Todo vive en una sola base de datos, **CaptacionDB**. Se distinguen dos partes:
+Todo vive en una sola base de datos (el nombre concreto depende del entorno — por ejemplo `CaptacionDB` en desarrollo local, `BolsaEgresadosUTTN` en el servidor real; el connection string `CaptacionDbContext` en `Web.config` define a cuál se conecta la app). Se distinguen dos partes:
 
 - **Esquema de captación** (ya existente, no se modifica): `Usuarios`, `Roles`, `Aspirantes`, `Carreras`, `Periodos`, `Documentos`, `TiposDocumentos`, `EstadosDocumentos`, y otras tablas del proceso de admisión. Referencia completa exportada en `Scripts/Databasenew.sql`.
 - **Módulo de inducción** (`Ind_*`, agregado por este proyecto): se instala/actualiza con el script único `Scripts/SistemaInduccion_SetupCompleto.sql`.
@@ -65,7 +65,7 @@ Ind_Submisiones (archivos subidos por el aspirante)
 
 ## Integración con `Documentos`
 
-`Documentos` es una tabla que ya existía en `CaptacionDB` para el proceso de captación (actas, CURP, comprobantes, etc.), con metadata mucho más rica que un simple path: nombre original, extensión, tipo MIME, tamaño en bytes, ruta de almacenamiento, hash SHA-256, número de versión, versión actual, y quién/cuándo lo subió.
+`Documentos` es una tabla que ya existía en la base de datos para el proceso de captación (actas, CURP, comprobantes, etc.), con metadata mucho más rica que un simple path: nombre original, extensión, tipo MIME, tamaño en bytes, ruta de almacenamiento, hash SHA-256, número de versión, versión actual, y quién/cuándo lo subió.
 
 Cuando un aspirante sube un entregable de inducción (`AspiranteController.UploadEntregable`):
 

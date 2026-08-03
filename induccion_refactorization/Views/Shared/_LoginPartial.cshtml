@@ -1,6 +1,9 @@
+@using induccion_refactorization.Helpers
+@using induccion_refactorization.Models
 @if (Request.IsAuthenticated)
 {
     var rolID = Session["RolID"] != null ? (int)Session["RolID"] : 0;
+    var usuarioID = Session["UsuarioID"] != null ? (int)Session["UsuarioID"] : 0;
     var currentController = (string)ViewContext.RouteData.Values["controller"];
     var currentAction = (string)ViewContext.RouteData.Values["action"];
 
@@ -10,32 +13,71 @@
         string.Equals(currentController, c, System.StringComparison.OrdinalIgnoreCase) &&
         (actions == null || actions.Length == 0 || actions.Any(a => string.Equals(currentAction, a, System.StringComparison.OrdinalIgnoreCase)));
 
-    <ul class="navbar-nav navbar-nav-center">
-        @if (rolID == 1)
-        {
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Index" }) ? "active" : "")" href="@Url.Action("Index", "Admin")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
-            <li class="nav-item"><a class="nav-link @(isActiveSection("InductionMaintenance", null) ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionUsuarios", "CreateUsuario", "EditUsuario" }) ? "active" : "")" href="@Url.Action("GestionUsuarios", "Admin")"><i class="fas fa-user-cog"></i> Gestión de Usuarios</a></li>
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionPeriodos", "CreatePeriodo", "EditPeriodo" }) ? "active" : "")" href="@Url.Action("GestionPeriodos", "Admin")"><i class="fas fa-calendar-alt"></i> Periodos</a></li>
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Permisos" }) ? "active" : "")" href="@Url.Action("Permisos", "Admin")"><i class="fas fa-shield-alt"></i> Permisos por Rol</a></li>
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Reportes" }) ? "active" : "")" href="@Url.Action("Reportes", "Admin")"><i class="fas fa-chart-bar"></i> Reportes</a></li>
-        }
-        else if (rolID == 2)
-        {
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Director", null) ? "active" : "")" href="@Url.Action("Index", "Director")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
-        }
-        else if (rolID == 3)
-        {
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "Index" }) ? "active" : "")" href="@Url.Action("Index", "Coordinador")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
-            <li class="nav-item"><a class="nav-link @(isActiveSection("InductionMaintenance", null) ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "RevisarEntregas", "Calificar", "DownloadSubmission" }) ? "active" : "")" href="@Url.Action("RevisarEntregas", "Coordinador")"><i class="fas fa-clipboard-check"></i> Revisar Entregas</a></li>
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "RevisarProgreso", "CalificarProgreso" }) ? "active" : "")" href="@Url.Action("RevisarProgreso", "Coordinador")"><i class="fas fa-list-check"></i> Revisar Unidades</a></li>
-        }
-        else if (rolID == 4)
-        {
-            <li class="nav-item"><a class="nav-link @(isActiveSection("Aspirante", null) ? "active" : "")" href="@Url.Action("Index", "Aspirante")"><i class="fas fa-graduation-cap"></i> Mi Espacio</a></li>
-        }
-    </ul>
+    // El menú solo debe ofrecer los enlaces a las secciones que el usuario
+    // realmente puede leer (según Ind_RolPermisos / Ind_UsuarioPermisos), para
+    // no mostrar un link que después lleva a "Acceso Denegado".
+    using (var permDb = new CaptacionDbContext())
+    {
+        Func<string, bool> puedeVer = clave => PermissionHelper.TieneAcceso(permDb, usuarioID, rolID, clave, Accion.Leer);
+
+        <ul class="navbar-nav navbar-nav-center">
+            @if (rolID == 1)
+            {
+                <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Index" }) ? "active" : "")" href="@Url.Action("Index", "Admin")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
+                if (puedeVer("GestionContenido"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("InductionMaintenance", null) ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
+                }
+                if (puedeVer("GestionUsuarios"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionUsuarios", "CreateUsuario", "EditUsuario" }) ? "active" : "")" href="@Url.Action("GestionUsuarios", "Admin")"><i class="fas fa-user-cog"></i> Gestión de Usuarios</a></li>
+                }
+                if (puedeVer("GestionPeriodos"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionPeriodos", "CreatePeriodo", "EditPeriodo" }) ? "active" : "")" href="@Url.Action("GestionPeriodos", "Admin")"><i class="fas fa-calendar-alt"></i> Periodos</a></li>
+                }
+                if (puedeVer("GestionRoles"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Permisos" }) ? "active" : "")" href="@Url.Action("Permisos", "Admin")"><i class="fas fa-shield-alt"></i> Permisos por Rol</a></li>
+                }
+                if (puedeVer("Reportes"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Reportes" }) ? "active" : "")" href="@Url.Action("Reportes", "Admin")"><i class="fas fa-chart-bar"></i> Reportes</a></li>
+                }
+            }
+            else if (rolID == 3 || rolID == 5)
+            {
+                <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "Index" }) ? "active" : "")" href="@Url.Action("Index", "Coordinador")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
+                if (puedeVer("GestionContenido"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("InductionMaintenance", null) ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
+                }
+                if (puedeVer("RevisarEntregables"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "RevisarEntregas", "Calificar", "DownloadSubmission" }) ? "active" : "")" href="@Url.Action("RevisarEntregas", "Coordinador")"><i class="fas fa-clipboard-check"></i> Revisar Entregas</a></li>
+                }
+                if (puedeVer("RevisarUnidades"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "RevisarProgreso", "CalificarProgreso" }) ? "active" : "")" href="@Url.Action("RevisarProgreso", "Coordinador")"><i class="fas fa-list-check"></i> Revisar Unidades</a></li>
+                }
+                if (puedeVer("MisAspirantes"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "MisAspirantes", "AspiranteDetalle", "AsignarUnidad" }) ? "active" : "")" href="@Url.Action("MisAspirantes", "Coordinador")"><i class="fas fa-user-graduate"></i> Mis Aspirantes</a></li>
+                }
+                if (rolID == 3 && puedeVer("MisMaestros"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "MisMaestros", "MaestroDetalle" }) ? "active" : "")" href="@Url.Action("MisMaestros", "Coordinador")"><i class="fas fa-chalkboard-teacher"></i> Mis Maestros</a></li>
+                }
+            }
+            else if (rolID == 4)
+            {
+                if (puedeVer("MiEspacio"))
+                {
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Aspirante", null) ? "active" : "")" href="@Url.Action("Index", "Aspirante")"><i class="fas fa-graduation-cap"></i> Mi Espacio</a></li>
+                }
+            }
+        </ul>
+    }
 
     <ul class="navbar-nav ms-auto">
         <li class="nav-item dropdown">

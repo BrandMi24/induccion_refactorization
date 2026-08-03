@@ -7,8 +7,8 @@ namespace induccion_refactorization.ViewModels
         // Usuarios
         public int TotalUsuarios { get; set; }
         public int TotalAdministradores { get; set; }
-        public int TotalDirectores { get; set; }
         public int TotalCoordinadores { get; set; }
+        public int TotalMaestros { get; set; }
         public int TotalAspirantes { get; set; }
 
         // Contenido
@@ -30,5 +30,13 @@ namespace induccion_refactorization.ViewModels
         public decimal? PromedioUnidades { get; set; }
 
         public List<MateriaProgresoResumen> MateriasConProgreso { get; set; } = new List<MateriaProgresoResumen>();
+    }
+
+    public class MateriaProgresoResumen
+    {
+        public string Nombre { get; set; }
+        public int Total { get; set; }
+        public int Completados { get; set; }
+        public int Porcentaje => Total > 0 ? (int)((Completados * 100.0) / Total) : 0;
     }
 }

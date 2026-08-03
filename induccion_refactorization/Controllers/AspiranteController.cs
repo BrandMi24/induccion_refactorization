@@ -20,6 +20,7 @@ namespace induccion_refactorization.Controllers
         private const int CursosPreviewCount = 2;
 
         // GET: /Aspirante/Index
+        [RequierePermiso("MiEspacio", Accion.Leer)]
         public ActionResult Index()
         {
             var model = new AspiranteDashboardViewModel
@@ -79,6 +80,7 @@ namespace induccion_refactorization.Controllers
         }
 
         // GET: /Aspirante/MateriaDetails/5
+        [RequierePermiso("MiEspacio", Accion.Leer)]
         public ActionResult MateriaDetails(int? id)
         {
             if (id == null)
@@ -142,6 +144,7 @@ namespace induccion_refactorization.Controllers
         // POST: /Aspirante/MarcarEntregado/5
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequierePermiso("MiEspacio", Accion.Editar)]
         public ActionResult MarcarEntregado(int progresoId, int materiaId)
         {
             int? aspiranteId = Session["AspiranteID"] as int?;
@@ -182,44 +185,10 @@ namespace induccion_refactorization.Controllers
             return RedirectToAction("MateriaDetails", new { id = materiaId });
         }
 
-        // GET: /Aspirante/UploadEntregable/5
-        public ActionResult UploadEntregable(int? id)
-        {
-            if (id == null)
-            {
-                TempData["Error"] = "Entregable no válido.";
-                return RedirectToAction("Index");
-            }
-
-            var entregable = db.Ind_Entregables
-                .Include(e => e.Ind_Unidad.Ind_Materia)
-                .FirstOrDefault(e => e.EntregableID == id && e.Activo);
-
-            if (entregable == null)
-            {
-                TempData["Error"] = "Entregable no encontrado.";
-                return RedirectToAction("Index");
-            }
-
-            int? aspiranteId = Session["AspiranteID"] as int?;
-            if (aspiranteId == null)
-            {
-                TempData["Error"] = "Sesión inválida.";
-                return RedirectToAction("Index");
-            }
-
-            var submisionExistente = db.Ind_Submisiones
-                .FirstOrDefault(s => s.AspiranteID == aspiranteId && s.EntregableID == id);
-
-            ViewBag.Entregable = entregable;
-            ViewBag.SubmisionExistente = submisionExistente;
-
-            return View();
-        }
-
         // POST: /Aspirante/UploadEntregable/5
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequierePermiso("SubirEntregables", Accion.Crear)]
         public ActionResult UploadEntregable(int id, HttpPostedFileBase archivo)
         {
             int? aspiranteId = Session["AspiranteID"] as int?;
@@ -229,7 +198,7 @@ namespace induccion_refactorization.Controllers
                 return RedirectToAction("Index");
             }
 
-            var entregable = db.Ind_Entregables.FirstOrDefault(e => e.EntregableID == id && e.Activo);
+            var entregable = db.Ind_Entregables.Include(e => e.Ind_Unidad).FirstOrDefault(e => e.EntregableID == id && e.Activo);
             if (entregable == null)
             {
                 TempData["Error"] = "Entregable no encontrado.";
@@ -239,7 +208,7 @@ namespace induccion_refactorization.Controllers
             if (!FileUploadValidator.IsValid(archivo, out string errorMessage))
             {
                 TempData["Error"] = errorMessage;
-                return RedirectToAction("UploadEntregable", new { id });
+                return RedirectToAction("MateriaDetails", new { id = entregable.Ind_Unidad.MateriaID });
             }
 
             try
@@ -317,17 +286,17 @@ namespace induccion_refactorization.Controllers
 
                 TempData["Success"] = $"Archivo para '{entregable.Titulo}' enviado exitosamente.";
 
-                var unidad = db.Ind_Unidades.Find(entregable.UnidadID);
-                return RedirectToAction("MateriaDetails", new { id = unidad?.MateriaID });
+                return RedirectToAction("MateriaDetails", new { id = entregable.Ind_Unidad.MateriaID });
             }
             catch (Exception ex)
             {
                 TempData["Error"] = $"Error al subir el archivo: {ex.Message}";
-                return RedirectToAction("UploadEntregable", new { id });
+                return RedirectToAction("MateriaDetails", new { id = entregable.Ind_Unidad.MateriaID });
             }
         }
 
         // GET: /Aspirante/DownloadSubmission/5
+        [RequierePermiso("MiEspacio", Accion.Leer)]
         public ActionResult DownloadSubmission(int id)
         {
             int? aspiranteId = Session["AspiranteID"] as int?;

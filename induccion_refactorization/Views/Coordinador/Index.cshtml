@@ -1,9 +1,11 @@
 @{
-    ViewBag.Title = "Panel de Coordinación";
+    var rolIdSesion = Session["RolID"] != null ? (int)Session["RolID"] : 0;
+    var tituloPanel = rolIdSesion == 5 ? "Panel de Maestro" : "Panel de Coordinación";
+    ViewBag.Title = tituloPanel;
 }
 
 <div class="mb-4">
-    <h2 class="mb-1"><i class="fas fa-users-cog text-primary"></i> Panel de Coordinación</h2>
+    <h2 class="mb-1"><i class="fas fa-users-cog text-primary"></i> @tituloPanel</h2>
     <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
 </div>
 
@@ -101,4 +103,33 @@
             </a>
         </div>
     </div>
+
+    <div class="col-md-6">
+        <div class="action-card">
+            <div class="icon-badge icon-badge-lg icon-badge-success">
+                <i class="fas fa-user-graduate"></i>
+            </div>
+            <h5 class="action-card-title">Mis Aspirantes</h5>
+            <p class="action-card-text">Ver a tus aspirantes, su avance, y asignar o reasignar unidades.</p>
+            <a href="@Url.Action("MisAspirantes", "Coordinador")" class="btn btn-success">
+                Ir a Aspirantes <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+
+    @if (rolIdSesion == 3)
+    {
+        <div class="col-md-6 offset-md-3">
+            <div class="action-card">
+                <div class="icon-badge icon-badge-lg icon-badge-secondary">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <h5 class="action-card-title">Mis Maestros</h5>
+                <p class="action-card-text">Ver a los Maestros de tu carrera y un reporte de su actividad.</p>
+                <a href="@Url.Action("MisMaestros", "Coordinador")" class="btn btn-secondary">
+                    Ir a Maestros <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    }
 </div>

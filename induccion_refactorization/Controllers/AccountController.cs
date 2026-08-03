@@ -74,12 +74,25 @@ namespace induccion_refactorization.Controllers
                     return View(model);
                 }
 
+                // El rol Director ya no tiene acceso al sistema; se rechaza aquí, antes de
+                // crear sesión o cookie de autenticación.
+                if (user.RolID == 2)
+                {
+                    ModelState.AddModelError("", "Tu acceso ha sido deshabilitado. Intenta con otro usuario o contacta al administrador.");
+                    return View(model);
+                }
+
+                // "Recordarme" hace que la cookie de autenticación sobreviva a cerrar el
+                // navegador (30 días); si no se marca, es una cookie de sesión normal que
+                // se descarta al cerrar el navegador y expira a las 8 horas de todos modos.
+                var expiration = model.RememberMe ? DateTime.Now.AddDays(30) : DateTime.Now.AddHours(8);
+
                 // Create Forms Authentication ticket
                 var authTicket = new FormsAuthenticationTicket(
                     version: 1,
                     name: user.CorreoElectronico,
                     issueDate: DateTime.Now,
-                    expiration: DateTime.Now.AddHours(8),
+                    expiration: expiration,
                     isPersistent: model.RememberMe,
                     userData: $"{user.UsuarioID}|{user.RolID}|{user.NombreCompleto}"
                 );
@@ -88,16 +101,19 @@ namespace induccion_refactorization.Controllers
                 var authCookie = new HttpCookie(FormsAuthentication.FormsCookieName, encryptedTicket)
                 {
                     HttpOnly = true,
-                    Secure = FormsAuthentication.RequireSSL,
-                    Expires = authTicket.Expiration
+                    Secure = FormsAuthentication.RequireSSL
                 };
+                if (model.RememberMe)
+                {
+                    // Solo si se marcó "Recordarme" se le da una fecha de expiración a la
+                    // cookie en sí; de lo contrario debe quedar como cookie de sesión
+                    // (sin Expires) para que el navegador la borre al cerrarse.
+                    authCookie.Expires = expiration;
+                }
                 Response.Cookies.Add(authCookie);
 
                 // Store core session data
-                Session["UsuarioID"] = user.UsuarioID;
-                Session["RolID"] = user.RolID;
-                Session["NombreCompleto"] = user.NombreCompleto;
-                Session["Email"] = user.CorreoElectronico;
+                SessionHelper.PopulateSession(Session, user, db);
 
                 // Record last access time
                 user.UltimoAcceso = DateTime.Now;
@@ -167,23 +183,18 @@ namespace induccion_refactorization.Controllers
                 case 1: // Administrador
                     return RedirectToAction("Index", "Admin");
 
-                case 2: // Director
-                    return RedirectToAction("Index", "Director");
-
                 case 3: // Coordinador
+                case 5: // Maestro
                     return RedirectToAction("Index", "Coordinador");
 
                 case 4: // Aspirante
-                    // Load aspirante-specific session data
+                    // Los datos de sesión propios del aspirante (AspiranteID, Matricula,
+                    // Folio) ya los deja listos SessionHelper.PopulateSession de arriba.
                     var aspirante = db.Aspirantes
                         .FirstOrDefault(a => a.UsuarioID == user.UsuarioID);
 
                     if (aspirante != null)
                     {
-                        Session["AspiranteID"] = aspirante.AspiranteID;
-                        Session["Matricula"] = aspirante.Matricula;
-                        Session["Folio"] = aspirante.Folio;
-
                         // Check for dummy/placeholder email (legacy bug fix)
                         if (user.CorreoElectronico.Contains("@example.com") || user.CorreoElectronico.Contains("@dummy.com"))
                         {
@@ -194,9 +205,14 @@ namespace induccion_refactorization.Controllers
                     return RedirectToAction("Index", "Aspirante");
 
                 default:
-                    // Unknown role - redirect to home
-                    TempData["Error"] = "Rol no reconocido. Contacte al administrador.";
-                    return RedirectToAction("Index", "Home");
+                    // Rol sin panel todavía (p. ej. no reconocido, o un rol nuevo sin
+                    // controlador propio aún): se cierra la sesión recién creada en vez de
+                    // dejarla apuntando a ningún lado.
+                    FormsAuthentication.SignOut();
+                    Session.Clear();
+                    Session.Abandon();
+                    TempData["Error"] = "Tu rol no tiene un panel disponible todavía. Contacta al administrador.";
+                    return RedirectToAction("Login");
             }
         }
 
@@ -206,14 +222,20 @@ namespace induccion_refactorization.Controllers
             {
                 case 1:
                     return RedirectToAction("Index", "Admin");
-                case 2:
-                    return RedirectToAction("Index", "Director");
                 case 3:
+                case 5:
                     return RedirectToAction("Index", "Coordinador");
                 case 4:
                     return RedirectToAction("Index", "Aspirante");
                 default:
-                    return RedirectToAction("Index", "Home");
+                    // Rol sin panel válido (p. ej. una sesión vieja de un usuario Director,
+                    // RolID 2): se cierra la sesión aquí para no caer en un ciclo de
+                    // redirecciones entre Login y Home.
+                    FormsAuthentication.SignOut();
+                    Session.Clear();
+                    Session.Abandon();
+                    TempData["Error"] = "Tu acceso ha sido deshabilitado. Intenta con otro usuario o contacta al administrador.";
+                    return RedirectToAction("Login");
             }
         }
 

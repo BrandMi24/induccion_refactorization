@@ -13,6 +13,7 @@ namespace induccion_refactorization.Models
         {
             Aspirantes = new HashSet<Aspirante>();
             Ind_ProgresoAspirantes = new HashSet<Ind_ProgresoAspirante>();
+            Carreras = new HashSet<Carrera>();
         }
 
         [Key]
@@ -73,5 +74,10 @@ namespace induccion_refactorization.Models
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Ind_ProgresoAspirante> Ind_ProgresoAspirantes { get; set; }
+
+        // Carreras a las que está asignado este usuario (Coordinador, Maestro o Aspirante).
+        // No aplica para Administrador.
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Carrera> Carreras { get; set; }
     }
 }

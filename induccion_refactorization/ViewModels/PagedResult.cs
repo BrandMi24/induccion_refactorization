@@ -13,6 +13,11 @@ namespace induccion_refactorization.ViewModels
         public string Action { get; set; }
         public string Controller { get; set; }
         public RouteValueDictionary RouteValues { get; set; } = new RouteValueDictionary();
+
+        // Nombres de query string configurables: permite tener dos o más pagers
+        // independientes en la misma página (ej. AspiranteDetalle: progresoPage, submisionPage).
+        public string PageParamName { get; set; } = "page";
+        public string PageSizeParamName { get; set; } = "pageSize";
     }
 
     public class PagedResult<T>

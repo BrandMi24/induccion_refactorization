@@ -2,7 +2,7 @@
 
 Portal web de inducción/onboarding para aspirantes de la Universidad Tecnológica de Tamaulipas Norte (UTTN). Permite a Administradores y Coordinadores publicar contenido de inducción (materias, unidades, materiales y entregables), a los Aspirantes consumirlo y entregar tareas, y a Coordinadores/Directores dar seguimiento al progreso.
 
-Este módulo se integra sobre una base de datos (`CaptacionDB`) y un esquema de captación de aspirantes ya existentes; el sistema de inducción añade sus propias tablas (prefijo `Ind_`) sin modificar el esquema original de captación.
+Este módulo se integra sobre una base de datos y un esquema de captación de aspirantes ya existentes (el nombre de la base depende del entorno — ver `Web.config`); el sistema de inducción añade sus propias tablas (prefijo `Ind_`) sin modificar el esquema original de captación.
 
 ## Índice
 
@@ -51,7 +51,7 @@ induccion_refactorization/
 
 ## Puesta en marcha
 
-1. **Base de datos**: la app espera una base `CaptacionDB` con el esquema de captación ya existente (ver `Scripts/Databasenew.sql` como referencia de ese esquema). Para agregar las tablas del módulo de inducción y datos de prueba, ejecuta:
+1. **Base de datos**: la app espera una base de datos con el esquema de captación ya existente (ver `Scripts/Databasenew.sql` como referencia de ese esquema). Para agregar las tablas del módulo de inducción y datos de prueba, ejecuta:
 
    ```
    Scripts/SistemaInduccion_SetupCompleto.sql

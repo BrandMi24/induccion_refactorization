@@ -32,6 +32,8 @@ namespace induccion_refactorization.Models
 
         public bool Activo { get; set; }
 
+        public int Orden { get; set; }
+
         // Navigation Properties
         [ForeignKey("UnidadID")]
         public virtual Ind_Unidad Ind_Unidad { get; set; }

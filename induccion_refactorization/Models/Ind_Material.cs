@@ -22,6 +22,8 @@ namespace induccion_refactorization.Models
         [Required]
         public string RutaURL { get; set; }
 
+        public int Orden { get; set; }
+
         // Navigation Properties
         [ForeignKey("UnidadID")]
         public virtual Ind_Unidad Ind_Unidad { get; set; }

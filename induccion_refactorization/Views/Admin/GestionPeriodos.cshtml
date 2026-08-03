@@ -8,9 +8,9 @@
         <h2 class="mb-1"><i class="fas fa-calendar-alt text-primary"></i> Gestión de Periodos</h2>
         <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
     </div>
-    <a href="@Url.Action("CreatePeriodo", "Admin")" class="btn btn-primary">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoPeriodo">
         <i class="fas fa-calendar-plus"></i> Nuevo Periodo
-    </a>
+    </button>
 </div>
 
 <div class="card">
@@ -59,11 +59,15 @@
                                     }
                                 </td>
                                 <td class="text-end" data-label="Acciones">
-                                    <a href="@Url.Action("EditPeriodo", new { id = periodo.PeriodoID })"
-                                       class="btn btn-sm btn-outline-secondary btn-icon"
-                                       title="Editar Periodo">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
+                                            title="Editar Periodo"
+                                            data-bs-toggle="modal" data-bs-target="#modalEditarPeriodo"
+                                            data-id="@periodo.PeriodoID"
+                                            data-fecha-inicio="@periodo.FechaInicio.ToString("yyyy-MM-dd")"
+                                            data-fecha-fin="@periodo.FechaFin.ToString("yyyy-MM-dd")"
+                                            data-activo="@periodo.Activo.ToString().ToLower()">
                                         <i class="fas fa-edit"></i>
-                                    </a>
+                                    </button>
                                     @using (Html.BeginForm("TogglePeriodo", "Admin", new { id = periodo.PeriodoID }, FormMethod.Post, new { @class = "d-inline" }))
                                     {
                                         @Html.AntiForgeryToken()
@@ -93,3 +97,90 @@
         }
     </div>
 </div>
+
+@* ===================== Modal: Nuevo Periodo ===================== *@
+<div class="modal fade" id="modalNuevoPeriodo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("CreatePeriodo", "Admin", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-calendar-plus"></i> Nuevo Periodo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-3">
+                            <label class="control-label">Fecha de Inicio</label>
+                            <input type="date" name="FechaInicio" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 form-group mb-3">
+                            <label class="control-label">Fecha de Fin</label>
+                            <input type="date" name="FechaFin" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="createPeriodoActivo" name="Activo" value="true" checked="checked" />
+                        <label class="form-check-label" for="createPeriodoActivo">Periodo activo</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Periodo</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Editar Periodo ===================== *@
+<div class="modal fade" id="modalEditarPeriodo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("EditPeriodo", "Admin", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="PeriodoID" id="editPeriodoId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-calendar-alt"></i> Editar Periodo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-3">
+                            <label class="control-label">Fecha de Inicio</label>
+                            <input type="date" name="FechaInicio" id="editPeriodoFechaInicio" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 form-group mb-3">
+                            <label class="control-label">Fecha de Fin</label>
+                            <input type="date" name="FechaFin" id="editPeriodoFechaFin" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="editPeriodoActivo" name="Activo" value="true" />
+                        <label class="form-check-label" for="editPeriodoActivo">Periodo activo</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            document.getElementById('modalEditarPeriodo').addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                document.getElementById('editPeriodoId').value = button.dataset.id;
+                document.getElementById('editPeriodoFechaInicio').value = button.dataset.fechaInicio;
+                document.getElementById('editPeriodoFechaFin').value = button.dataset.fechaFin;
+                document.getElementById('editPeriodoActivo').checked = button.dataset.activo === 'true';
+            });
+        });
+    </script>
+}

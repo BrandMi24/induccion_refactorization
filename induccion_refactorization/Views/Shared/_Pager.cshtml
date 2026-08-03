@@ -5,12 +5,12 @@
         return;
     }
 
-    var jumpFormId = "pagerJumpForm_" + Model.Controller + "_" + Model.Action;
-    var sizeFormId = "pagerSizeForm_" + Model.Controller + "_" + Model.Action;
+    var jumpFormId = "pagerJumpForm_" + Model.Controller + "_" + Model.Action + "_" + Model.PageParamName;
+    var sizeFormId = "pagerSizeForm_" + Model.Controller + "_" + Model.Action + "_" + Model.PageParamName;
 
     Func<int, System.Web.Routing.RouteValueDictionary> routeFor = page =>
     {
-        var rv = new System.Web.Routing.RouteValueDictionary(Model.RouteValues) { ["page"] = page, ["pageSize"] = Model.PageSize };
+        var rv = new System.Web.Routing.RouteValueDictionary(Model.RouteValues) { [Model.PageParamName] = page, [Model.PageSizeParamName] = Model.PageSize };
         return rv;
     };
 }
@@ -39,9 +39,9 @@
                     @Html.Hidden(kvp.Key, kvp.Value)
                 }
             }
-            @Html.Hidden("pageSize", Model.PageSize)
+            @Html.Hidden(Model.PageSizeParamName, Model.PageSize)
 
-            <select name="page" class="form-select form-select-sm w-auto d-inline-block" onchange="document.getElementById('@jumpFormId').submit();">
+            <select name="@Model.PageParamName" class="form-select form-select-sm w-auto d-inline-block" onchange="document.getElementById('@jumpFormId').submit();">
                 @for (var p = 1; p <= Model.TotalPages; p++)
                 {
                     if (p == Model.PageNumber)
@@ -81,9 +81,9 @@
                     @Html.Hidden(kvp.Key, kvp.Value)
                 }
             }
-            @Html.Hidden("page", 1)
+            @Html.Hidden(Model.PageParamName, 1)
 
-            <select name="pageSize" class="form-select form-select-sm w-auto d-inline-block" onchange="document.getElementById('@sizeFormId').submit();">
+            <select name="@Model.PageSizeParamName" class="form-select form-select-sm w-auto d-inline-block" onchange="document.getElementById('@sizeFormId').submit();">
                 @foreach (var size in new[] { 5, 10, 15, 20 })
                 {
                     if (size == Model.PageSize)

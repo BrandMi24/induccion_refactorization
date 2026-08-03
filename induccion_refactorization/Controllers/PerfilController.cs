@@ -30,24 +30,6 @@ namespace induccion_refactorization.Controllers
             return View(usuario);
         }
 
-        // GET: /Perfil/Edit
-        public ActionResult Edit()
-        {
-            int? usuarioId = Session["UsuarioID"] as int?;
-            if (usuarioId == null)
-            {
-                return RedirectToAction("Login", "Account");
-            }
-
-            var usuario = db.Usuarios.Find(usuarioId);
-            if (usuario == null)
-            {
-                return RedirectToAction("Login", "Account");
-            }
-
-            return View(usuario);
-        }
-
         // POST: /Perfil/Edit
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -67,8 +49,8 @@ namespace induccion_refactorization.Controllers
 
             if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(apellidoPaterno))
             {
-                ModelState.AddModelError("", "El nombre y el apellido paterno son obligatorios.");
-                return View(usuario);
+                TempData["Error"] = "El nombre y el apellido paterno son obligatorios.";
+                return RedirectToAction("Index");
             }
 
             try
@@ -88,13 +70,13 @@ namespace induccion_refactorization.Controllers
                 Session["NombreCompleto"] = usuario.NombreCompleto;
 
                 TempData["Success"] = "Tu perfil se actualizó exitosamente.";
-                return RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError("", $"Error al actualizar: {ex.Message}");
-                return View(usuario);
+                TempData["Error"] = $"Error al actualizar: {ex.Message}";
             }
+
+            return RedirectToAction("Index");
         }
 
         protected override void Dispose(bool disposing)

@@ -1,0 +1,174 @@
+@model induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.ViewModels.MaestroResumenViewModel>
+@{
+    ViewBag.Title = "Mis Maestros";
+}
+
+<div class="mb-4">
+    <a href="@Url.Action("Index", "Coordinador")" class="btn btn-link ps-0">
+        <i class="fas fa-arrow-left"></i> Volver al Panel
+    </a>
+    <h2 class="mb-1"><i class="fas fa-chalkboard-teacher text-primary"></i> Mis Maestros</h2>
+    <p class="text-muted mb-0">Maestros asignados a tu(s) carrera(s) y su actividad.</p>
+</div>
+
+<div class="row mb-4 g-3">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-primary"><i class="fas fa-chalkboard-teacher"></i></div>
+            <div>
+                <div class="stat-card-value">@ViewBag.TotalMaestros</div>
+                <div class="stat-card-label">Maestros</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-info"><i class="fas fa-book"></i></div>
+            <div>
+                <div class="stat-card-value">@ViewBag.TotalMateriasCompartidas</div>
+                <div class="stat-card-label">Materias Compartidas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-success"><i class="fas fa-list-check"></i></div>
+            <div>
+                <div class="stat-card-value">@ViewBag.TotalUnidadesCalificadas</div>
+                <div class="stat-card-label">Unidades Calificadas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="icon-badge icon-badge-warning"><i class="fas fa-clipboard-check"></i></div>
+            <div>
+                <div class="stat-card-value">@ViewBag.TotalEntregasCalificadas</div>
+                <div class="stat-card-label">Entregas Calificadas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-3">
+        @using (Html.BeginForm("MisMaestros", "Coordinador", FormMethod.Get))
+        {
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label small text-muted mb-1">Buscar</label>
+                    <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm"
+                           placeholder="Nombre o correo..." />
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="@Url.Action("MisMaestros", "Coordinador")" class="btn btn-sm btn-outline-secondary btn-icon" title="Limpiar filtros">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Maestros</h5>
+        <small class="text-muted">@Model.TotalCount resultado(s)</small>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Items.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-clean mb-0">
+                    <thead>
+                        <tr>
+                            @{
+                                var sortRouteValues = new System.Web.Routing.RouteValueDictionary(new { search = ViewBag.Search });
+                            }
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Maestro", SortField = "Maestro", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "MisMaestros", Controller = "Coordinador", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th class="text-center">
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Materias Compartidas", SortField = "Materias", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "MisMaestros", Controller = "Coordinador", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th class="text-center">
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Unidades Calificadas", SortField = "Unidades", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "MisMaestros", Controller = "Coordinador", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th class="text-center">
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Entregas Calificadas", SortField = "Entregas", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "MisMaestros", Controller = "Coordinador", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td data-label="Maestro">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="icon-badge icon-badge-sm icon-badge-primary">
+                                            <i class="fas fa-chalkboard-teacher"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold">@(item.Usuario.NombreCompleto)</div>
+                                            <small class="text-muted">@(item.Usuario.CorreoElectronico)</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center" data-label="Materias Compartidas">
+                                    <span class="badge bg-info">@item.TotalMateriasCompartidas</span>
+                                </td>
+                                <td class="text-center" data-label="Unidades Calificadas">@item.UnidadesCalificadasPorEl</td>
+                                <td class="text-center" data-label="Entregas Calificadas">@item.EntregasCalificadasPorEl</td>
+                                <td class="text-end" data-label="Acciones">
+                                    <a href="@Url.Action("MaestroDetalle", new { id = item.Usuario.UsuarioID })"
+                                       class="btn btn-sm btn-primary" title="Ver reporte detallado">
+                                        <i class="fas fa-eye"></i> Ver Detalle
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
+            {
+                PageNumber = Model.PageNumber,
+                TotalPages = Model.TotalPages,
+                PageSize = Model.PageSize,
+                Action = "MisMaestros",
+                Controller = "Coordinador",
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { search = ViewBag.Search, sortBy = ViewBag.SortBy, sortDir = ViewBag.SortDir })
+            })
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon-badge icon-badge-lg icon-badge-info">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <div class="empty-state-title">No hay maestros en tu carrera todavía</div>
+                <p class="mb-0">Cuando el Administrador asigne un Maestro a tu carrera, aparecerá aquí.</p>
+            </div>
+        }
+    </div>
+</div>

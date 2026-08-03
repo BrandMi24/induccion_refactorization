@@ -1,6 +1,5 @@
 -- ============================================================================
 -- SISTEMA DE INDUCCIÓN - SCRIPT ÚNICO DE INSTALACIÓN
--- Base de datos: CaptacionDB
 -- ============================================================================
 -- Este script reemplaza y consolida todo lo que antes estaba repartido en:
 --   Phase6_Entregables_Submisiones.sql, Phase7_DocumentosIntegration.sql,
@@ -10,15 +9,26 @@
 -- Qué hace:
 --   PARTE 1 - Esquema: crea las tablas del módulo de inducción (Ind_Materias,
 --             Ind_Unidades, Ind_Materiales, Ind_ProgresoAspirante,
---             Ind_Entregables, Ind_Submisiones, Ind_MateriaCarreras) y su
---             integración con la tabla Documentos ya existente en CaptacionDB.
---   PARTE 2 - Datos de prueba: crea un usuario de cada rol (Admin, Director,
---             Coordinador, Aspirante) y algunas materias/unidades/materiales
---             de ejemplo para poder probar la aplicación de inmediato.
+--             Ind_Entregables, Ind_Submisiones, Ind_MateriaCarreras,
+--             Ind_UsuarioCarreras) y su integración con la tabla Documentos
+--             ya existente en la base. También agrega el rol "Maestro" a la
+--             tabla Roles (el rol Director ya no tiene acceso al sistema;
+--             ver AccountController.cs).
+--   PARTE 2 - Datos de prueba: crea un usuario de cada rol vigente (Admin,
+--             Coordinador, Maestro, Aspirante), les asigna una carrera de
+--             ejemplo, y crea algunas materias/unidades/materiales de
+--             ejemplo para poder probar la aplicación de inmediato.
 --
--- Requisitos previos: la base CaptacionDB ya debe existir con su esquema
+-- Requisitos previos: la base de datos ya debe existir con su esquema
 -- original (Usuarios, Roles, Aspirantes, Carreras, Periodos, Documentos,
 -- TiposDocumentos, EstadosDocumentos, etc. - ver Databasenew.sql).
+--
+-- IMPORTANTE: este script NO trae un "USE <basededatos>" fijo a propósito,
+-- porque el nombre de la base cambia según el entorno (CaptacionDB en local,
+-- BolsaEgresadosUTTN en el servidor real, etc.). Antes de ejecutarlo, conecta
+-- SSMS/Azure Data Studio a la base correcta (selecciónala en el desplegable
+-- de la barra de herramientas, o agrega tu propio "USE <basededatos>; GO" al
+-- principio) para no correrlo por accidente contra la base equivocada.
 --
 -- Es idempotente: se puede ejecutar más de una vez sin duplicar tablas ni
 -- restricciones. La PARTE 2 SÍ borra y vuelve a insertar los datos de
@@ -29,11 +39,8 @@
 -- primera vez que ese usuario inicia sesión, así que no hace falta hashearlas
 -- a mano en este script.
 -- ============================================================================
-
 USE CaptacionDB;
 GO
-
-
 -- ============================================================================
 -- PARTE 1: ESQUEMA DEL MÓDULO DE INDUCCIÓN
 -- ============================================================================
@@ -104,6 +111,7 @@ BEGIN
         Nombre      NVARCHAR(255) NOT NULL,
         TipoRecurso NVARCHAR(50) NOT NULL,
         RutaURL     NVARCHAR(MAX) NOT NULL,
+        Orden       INT NOT NULL CONSTRAINT DF_IndMateriales_Orden DEFAULT (0),
         CONSTRAINT PK_IndMateriales PRIMARY KEY CLUSTERED (MaterialID ASC)
     );
 END
@@ -113,6 +121,31 @@ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_IndMateriales_Uni
 BEGIN
     ALTER TABLE dbo.Ind_Materiales WITH CHECK ADD CONSTRAINT FK_IndMateriales_Unidades
         FOREIGN KEY (UnidadID) REFERENCES dbo.Ind_Unidades (UnidadID);
+END
+GO
+
+-- Bases ya existentes que no tenían esta columna: se agrega y se rellena con el
+-- orden de creación actual (MaterialID ascendente dentro de cada Unidad).
+-- (El ALTER TABLE y el UPDATE que usa la columna nueva van en lotes/GO
+-- separados: SQL Server no permite referenciar una columna recién agregada
+-- dentro del mismo lote que la agrega.)
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_Materiales') AND name = 'Orden')
+BEGIN
+    ALTER TABLE dbo.Ind_Materiales ADD Orden INT NOT NULL CONSTRAINT DF_IndMateriales_Orden DEFAULT (0);
+END
+GO
+
+IF EXISTS (SELECT 1 FROM dbo.Ind_Materiales WHERE Orden = 0)
+BEGIN
+    ;WITH Numerado AS (
+        SELECT MaterialID, ROW_NUMBER() OVER (PARTITION BY UnidadID ORDER BY MaterialID) AS Posicion
+        FROM dbo.Ind_Materiales
+        WHERE Orden = 0
+    )
+    UPDATE m
+    SET m.Orden = n.Posicion
+    FROM dbo.Ind_Materiales m
+    INNER JOIN Numerado n ON n.MaterialID = m.MaterialID;
 END
 GO
 
@@ -166,6 +199,7 @@ BEGIN
         FechaLimite    DATETIME NULL,
         PonderacionMax DECIMAL(5, 2) NOT NULL CONSTRAINT DF_IndEntregables_PonderacionMax DEFAULT (100),
         Activo         BIT NOT NULL CONSTRAINT DF_IndEntregables_Activo DEFAULT (1),
+        Orden          INT NOT NULL CONSTRAINT DF_IndEntregables_Orden DEFAULT (0),
         CONSTRAINT PK_IndEntregables PRIMARY KEY CLUSTERED (EntregableID ASC)
     );
 END
@@ -175,6 +209,31 @@ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_IndEntregables_Un
 BEGIN
     ALTER TABLE dbo.Ind_Entregables WITH CHECK ADD CONSTRAINT FK_IndEntregables_Unidades
         FOREIGN KEY (UnidadID) REFERENCES dbo.Ind_Unidades (UnidadID);
+END
+GO
+
+-- Bases ya existentes que no tenían esta columna: se agrega y se rellena con el
+-- orden de creación actual (EntregableID ascendente dentro de cada Unidad).
+-- (El ALTER TABLE y el UPDATE que usa la columna nueva van en lotes/GO
+-- separados: SQL Server no permite referenciar una columna recién agregada
+-- dentro del mismo lote que la agrega.)
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_Entregables') AND name = 'Orden')
+BEGIN
+    ALTER TABLE dbo.Ind_Entregables ADD Orden INT NOT NULL CONSTRAINT DF_IndEntregables_Orden DEFAULT (0);
+END
+GO
+
+IF EXISTS (SELECT 1 FROM dbo.Ind_Entregables WHERE Orden = 0)
+BEGIN
+    ;WITH Numerado AS (
+        SELECT EntregableID, ROW_NUMBER() OVER (PARTITION BY UnidadID ORDER BY EntregableID) AS Posicion
+        FROM dbo.Ind_Entregables
+        WHERE Orden = 0
+    )
+    UPDATE e
+    SET e.Orden = n.Posicion
+    FROM dbo.Ind_Entregables e
+    INNER JOIN Numerado n ON n.EntregableID = e.EntregableID;
 END
 GO
 
@@ -225,6 +284,150 @@ BEGIN
     ALTER TABLE dbo.Ind_Submisiones WITH CHECK ADD CONSTRAINT FK_Submisiones_Documentos
         FOREIGN KEY (DocumentoID) REFERENCES dbo.Documentos (DocumentoID);
 END
+GO
+
+-- 1.8 Rol Maestro --------------------------------------------------------------
+-- Se agrega como un rol nuevo (no se reutiliza el RolID del Director eliminado,
+-- ya que Roles es una tabla compartida con el resto del sistema de captación).
+-- RolID es IDENTITY, así que el valor exacto lo asigna SQL Server; si en tu base
+-- ya existían más de 4 roles, revisa el PRINT de abajo y ajusta los números
+-- hardcodeados en el código C# ([RoleAuthorize], switches de rol) si no da 5.
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE Nombre = 'Maestro')
+BEGIN
+    INSERT INTO dbo.Roles (Nombre) VALUES ('Maestro');
+    PRINT 'Rol "Maestro" creado con RolID ' + CAST(SCOPE_IDENTITY() AS VARCHAR) + '.';
+END
+GO
+
+-- 1.9 Ind_UsuarioCarreras (usuario <-> carrera, muchos a muchos) ---------------
+-- A qué carrera(s) está asignado un Coordinador, Maestro o Aspirante.
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Ind_UsuarioCarreras')
+BEGIN
+    CREATE TABLE dbo.Ind_UsuarioCarreras (
+        UsuarioID INT NOT NULL,
+        CarreraID INT NOT NULL,
+        CONSTRAINT PK_Ind_UsuarioCarreras PRIMARY KEY (UsuarioID, CarreraID),
+        CONSTRAINT FK_IndUsuarioCarreras_Usuarios FOREIGN KEY (UsuarioID)
+            REFERENCES dbo.Usuarios (UsuarioID) ON DELETE CASCADE,
+        CONSTRAINT FK_IndUsuarioCarreras_Carreras FOREIGN KEY (CarreraID)
+            REFERENCES dbo.Carreras (CarreraID)
+    );
+END
+GO
+
+-- 1.10 Roles.Activo -------------------------------------------------------------
+-- Permite "desactivar" un rol personalizado sin romper las FKs de los usuarios
+-- que ya lo tengan asignado.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Roles') AND name = 'Activo')
+BEGIN
+    ALTER TABLE dbo.Roles ADD Activo BIT NOT NULL CONSTRAINT DF_Roles_Activo DEFAULT (1);
+END
+GO
+
+-- 1.11 Ind_Permisos (catálogo de secciones/funciones del sistema) --------------
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Ind_Permisos')
+BEGIN
+    CREATE TABLE dbo.Ind_Permisos (
+        PermisoID   INT IDENTITY(1,1) NOT NULL,
+        Clave       NVARCHAR(50) NOT NULL,
+        Nombre      NVARCHAR(150) NOT NULL,
+        Descripcion NVARCHAR(300) NULL,
+        CONSTRAINT PK_IndPermisos PRIMARY KEY CLUSTERED (PermisoID ASC),
+        CONSTRAINT UQ_IndPermisos_Clave UNIQUE (Clave)
+    );
+END
+GO
+
+-- 1.12 Ind_RolPermisos (qué puede hacer cada rol en cada sección) --------------
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Ind_RolPermisos')
+BEGIN
+    CREATE TABLE dbo.Ind_RolPermisos (
+        RolID         INT NOT NULL,
+        PermisoID     INT NOT NULL,
+        PuedeLeer     BIT NOT NULL CONSTRAINT DF_IndRolPermisos_Leer DEFAULT (0),
+        PuedeCrear    BIT NOT NULL CONSTRAINT DF_IndRolPermisos_Crear DEFAULT (0),
+        PuedeEditar   BIT NOT NULL CONSTRAINT DF_IndRolPermisos_Editar DEFAULT (0),
+        PuedeEliminar BIT NOT NULL CONSTRAINT DF_IndRolPermisos_Eliminar DEFAULT (0),
+        CONSTRAINT PK_IndRolPermisos PRIMARY KEY (RolID, PermisoID),
+        CONSTRAINT FK_IndRolPermisos_Roles FOREIGN KEY (RolID) REFERENCES dbo.Roles (RolID),
+        CONSTRAINT FK_IndRolPermisos_Permisos FOREIGN KEY (PermisoID) REFERENCES dbo.Ind_Permisos (PermisoID)
+    );
+END
+GO
+
+-- 1.13 Ind_UsuarioPermisos (excepciones por usuario específico, sobre su rol) --
+-- NULL en cualquier columna = "hereda del rol"; 1/0 = permite/deniega sin
+-- importar lo que diga el rol.
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Ind_UsuarioPermisos')
+BEGIN
+    CREATE TABLE dbo.Ind_UsuarioPermisos (
+        UsuarioID     INT NOT NULL,
+        PermisoID     INT NOT NULL,
+        PuedeLeer     BIT NULL,
+        PuedeCrear    BIT NULL,
+        PuedeEditar   BIT NULL,
+        PuedeEliminar BIT NULL,
+        CONSTRAINT PK_IndUsuarioPermisos PRIMARY KEY (UsuarioID, PermisoID),
+        CONSTRAINT FK_IndUsuarioPermisos_Usuarios FOREIGN KEY (UsuarioID) REFERENCES dbo.Usuarios (UsuarioID),
+        CONSTRAINT FK_IndUsuarioPermisos_Permisos FOREIGN KEY (PermisoID) REFERENCES dbo.Ind_Permisos (PermisoID)
+    );
+END
+GO
+
+-- 1.14 Semilla de Ind_Permisos (catálogo de las 11 secciones actuales) --------
+-- Idempotente: solo inserta las claves que todavía no existan.
+INSERT INTO dbo.Ind_Permisos (Clave, Nombre, Descripcion)
+SELECT v.Clave, v.Nombre, v.Descripcion
+FROM (VALUES
+    ('GestionContenido',   'Gestión de Contenido',         'Materias, unidades, materiales y entregables.'),
+    ('GestionUsuarios',    'Gestión de Usuarios',          'Alta, edición y activación/desactivación de usuarios.'),
+    ('GestionPeriodos',    'Gestión de Periodos',          'Alta, edición y activación/desactivación de periodos.'),
+    ('GestionRoles',       'Gestión de Roles y Permisos',  'Crear roles y definir sus permisos por sección.'),
+    ('Reportes',           'Reportes',                     'Reportes con filtros por carrera, periodo y calificador.'),
+    ('RevisarEntregables', 'Revisar Entregables',          'Revisar y calificar archivos subidos por los aspirantes.'),
+    ('RevisarUnidades',    'Revisar Unidades',             'Revisar y calificar unidades marcadas como entregadas.'),
+    ('MisAspirantes',      'Mis Aspirantes',               'Ver y asignar/reasignar unidades a los aspirantes.'),
+    ('MisMaestros',        'Mis Maestros',                 'Ver los Maestros de la carrera y su actividad.'),
+    ('MiEspacio',          'Mi Espacio',                   'Ver cursos, progreso y marcar unidades como entregadas.'),
+    ('SubirEntregables',   'Subir Entregables',            'Subir o reemplazar archivos de entregables.')
+) AS v(Clave, Nombre, Descripcion)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Ind_Permisos p WHERE p.Clave = v.Clave);
+GO
+
+-- 1.15 Semilla de Ind_RolPermisos: reproduce EXACTAMENTE el comportamiento de
+-- hoy (los [RoleAuthorize] ya existentes en el código), para que desplegar esto
+-- no cambie nada hasta que un Admin edite algo desde la nueva pantalla de
+-- Permisos por Rol. RolID hardcodeado igual que en CarreraScopeHelper.cs:
+-- 1 = Administrador, 3 = Coordinador, 4 = Aspirante, 5 = Maestro.
+INSERT INTO dbo.Ind_RolPermisos (RolID, PermisoID, PuedeLeer, PuedeCrear, PuedeEditar, PuedeEliminar)
+SELECT v.RolID, p.PermisoID, v.Leer, v.Crear, v.Editar, v.Eliminar
+FROM (VALUES
+    -- Administrador: control total sobre sus secciones.
+    (1, 'GestionContenido',   1, 1, 1, 1),
+    (1, 'GestionUsuarios',    1, 1, 1, 1),
+    (1, 'GestionPeriodos',    1, 1, 1, 1),
+    (1, 'GestionRoles',       1, 1, 1, 1),
+    (1, 'Reportes',           1, 1, 1, 1),
+    -- Coordinador: contenido + revisión + sus aspirantes + sus maestros (esto
+    -- último exclusivo de Coordinador, no de Maestro).
+    (3, 'GestionContenido',   1, 1, 1, 1),
+    (3, 'RevisarEntregables', 1, 1, 1, 1),
+    (3, 'RevisarUnidades',    1, 1, 1, 1),
+    (3, 'MisAspirantes',      1, 1, 1, 1),
+    (3, 'MisMaestros',        1, 0, 0, 0),
+    -- Maestro: igual que Coordinador pero sin "Mis Maestros".
+    (5, 'GestionContenido',   1, 1, 1, 1),
+    (5, 'RevisarEntregables', 1, 1, 1, 1),
+    (5, 'RevisarUnidades',    1, 1, 1, 1),
+    (5, 'MisAspirantes',      1, 1, 1, 1),
+    -- Aspirante: su propio espacio y subir entregables.
+    (4, 'MiEspacio',          1, 0, 1, 0),
+    (4, 'SubirEntregables',   0, 1, 0, 0)
+) AS v(RolID, Clave, Leer, Crear, Editar, Eliminar)
+INNER JOIN dbo.Ind_Permisos p ON p.Clave = v.Clave
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.Ind_RolPermisos rp WHERE rp.RolID = v.RolID AND rp.PermisoID = p.PermisoID
+);
 GO
 
 PRINT 'PARTE 1 completa: esquema del módulo de inducción listo.';
@@ -290,19 +493,43 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Usuarios WHERE CorreoElectronico = 'admin@test.
 ELSE
     UPDATE dbo.Usuarios SET Contrasena = 'Password123!', RolID = 1, Activo = 1 WHERE CorreoElectronico = 'admin@test.com';
 
-IF NOT EXISTS (SELECT 1 FROM dbo.Usuarios WHERE CorreoElectronico = 'director@test.com')
-    INSERT INTO dbo.Usuarios (Nombre, ApellidoPaterno, ApellidoMaterno, NombreUsuario, CorreoElectronico, Contrasena, Activo, FechaRegistro, RolID)
-    VALUES ('Director', 'Academico', 'UTTN', 'director01', 'director@test.com', 'Password123!', 1, GETDATE(), 2);
-ELSE
-    UPDATE dbo.Usuarios SET Contrasena = 'Password123!', RolID = 2, Activo = 1 WHERE CorreoElectronico = 'director@test.com';
-
 IF NOT EXISTS (SELECT 1 FROM dbo.Usuarios WHERE CorreoElectronico = 'coordinador@test.com')
     INSERT INTO dbo.Usuarios (Nombre, ApellidoPaterno, ApellidoMaterno, NombreUsuario, CorreoElectronico, Contrasena, Activo, FechaRegistro, RolID)
     VALUES ('Sarah', 'Connor', 'Smith', 'coordinador01', 'coordinador@test.com', 'Password123!', 1, GETDATE(), 3);
 ELSE
     UPDATE dbo.Usuarios SET Contrasena = 'Password123!', RolID = 3, Activo = 1 WHERE CorreoElectronico = 'coordinador@test.com';
 
-PRINT 'Usuarios de prueba (Admin, Director, Coordinador, Aspirante) listos.';
+DECLARE @RolMaestroID INT = (SELECT TOP 1 RolID FROM dbo.Roles WHERE Nombre = 'Maestro');
+IF @RolMaestroID IS NOT NULL
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM dbo.Usuarios WHERE CorreoElectronico = 'maestro@test.com')
+        INSERT INTO dbo.Usuarios (Nombre, ApellidoPaterno, ApellidoMaterno, NombreUsuario, CorreoElectronico, Contrasena, Activo, FechaRegistro, RolID)
+        VALUES ('Juan', 'Pérez', 'UTTN', 'maestro01', 'maestro@test.com', 'Password123!', 1, GETDATE(), @RolMaestroID);
+    ELSE
+        UPDATE dbo.Usuarios SET Contrasena = 'Password123!', RolID = @RolMaestroID, Activo = 1 WHERE CorreoElectronico = 'maestro@test.com';
+END
+
+-- Asignamos una carrera de ejemplo a los usuarios de prueba que ya tienen ese
+-- concepto (Coordinador, Maestro, Aspirante), reutilizando la primera Carrera
+-- que exista en la base.
+DECLARE @CarreraEjemploID INT = (SELECT TOP 1 CarreraID FROM dbo.Carreras ORDER BY CarreraID ASC);
+IF @CarreraEjemploID IS NOT NULL
+BEGIN
+    DECLARE @UsuarioCoordinadorID INT = (SELECT UsuarioID FROM dbo.Usuarios WHERE CorreoElectronico = 'coordinador@test.com');
+    DECLARE @UsuarioMaestroID INT = (SELECT UsuarioID FROM dbo.Usuarios WHERE CorreoElectronico = 'maestro@test.com');
+    DECLARE @UsuarioAspiranteID INT = @RealAspiranteUserID;
+
+    IF @UsuarioCoordinadorID IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.Ind_UsuarioCarreras WHERE UsuarioID = @UsuarioCoordinadorID)
+        INSERT INTO dbo.Ind_UsuarioCarreras (UsuarioID, CarreraID) VALUES (@UsuarioCoordinadorID, @CarreraEjemploID);
+
+    IF @UsuarioMaestroID IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.Ind_UsuarioCarreras WHERE UsuarioID = @UsuarioMaestroID)
+        INSERT INTO dbo.Ind_UsuarioCarreras (UsuarioID, CarreraID) VALUES (@UsuarioMaestroID, @CarreraEjemploID);
+
+    IF @UsuarioAspiranteID IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.Ind_UsuarioCarreras WHERE UsuarioID = @UsuarioAspiranteID)
+        INSERT INTO dbo.Ind_UsuarioCarreras (UsuarioID, CarreraID) VALUES (@UsuarioAspiranteID, @CarreraEjemploID);
+END
+
+PRINT 'Usuarios de prueba (Admin, Coordinador, Maestro, Aspirante) listos.';
 
 -- 2.3 Materias, unidades y materiales de ejemplo ------------------------------
 -- (sin GO antes de esta sección: @TargetAspiranteID se sigue usando en el
@@ -354,15 +581,15 @@ SET @UnidadID6 = SCOPE_IDENTITY();
 INSERT INTO dbo.Ind_Unidades (MateriaID, Nombre, Orden) VALUES (@MateriaID3, 'Trabajo Colaborativo', 2);
 INSERT INTO dbo.Ind_Unidades (MateriaID, Nombre, Orden) VALUES (@MateriaID3, 'Gestión del Tiempo', 3);
 
-INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL) VALUES (@UnidadID1, 'Historia de la UTTN - PDF', 'PDF', 'https://www.uttn.edu.mx/docs/historia_uttn.pdf');
-INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL) VALUES (@UnidadID1, 'Video Institucional Misión', 'Video', 'https://www.youtube.com/watch?v=example1');
-INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL) VALUES (@UnidadID2, 'Guía de Servicios Escolares', 'PDF', 'https://www.uttn.edu.mx/docs/servicios.pdf');
-INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL) VALUES (@UnidadID3, 'Reglamento General de Alumnos', 'PDF', 'https://www.uttn.edu.mx/docs/reglamento.pdf');
-INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL) VALUES (@UnidadID4, 'Manual de Álgebra Básica', 'PDF', 'https://www.uttn.edu.mx/docs/algebra.pdf');
+INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL, Orden) VALUES (@UnidadID1, 'Historia de la UTTN - PDF', 'PDF', 'https://www.uttn.edu.mx/docs/historia_uttn.pdf', 1);
+INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL, Orden) VALUES (@UnidadID1, 'Video Institucional Misión', 'Video', 'https://www.youtube.com/watch?v=example1', 2);
+INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL, Orden) VALUES (@UnidadID2, 'Guía de Servicios Escolares', 'PDF', 'https://www.uttn.edu.mx/docs/servicios.pdf', 1);
+INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL, Orden) VALUES (@UnidadID3, 'Reglamento General de Alumnos', 'PDF', 'https://www.uttn.edu.mx/docs/reglamento.pdf', 1);
+INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL, Orden) VALUES (@UnidadID4, 'Manual de Álgebra Básica', 'PDF', 'https://www.uttn.edu.mx/docs/algebra.pdf', 1);
 
 -- Un entregable de ejemplo en la primera unidad, para poder probar el flujo de subida
-INSERT INTO dbo.Ind_Entregables (UnidadID, Titulo, Instrucciones, FechaLimite, PonderacionMax, Activo)
-VALUES (@UnidadID1, 'Prueba de Entregable', 'Sube cualquier documento en PDF como prueba del flujo de entrega.', DATEADD(DAY, 14, GETDATE()), 100, 1);
+INSERT INTO dbo.Ind_Entregables (UnidadID, Titulo, Instrucciones, FechaLimite, PonderacionMax, Activo, Orden)
+VALUES (@UnidadID1, 'Prueba de Entregable', 'Sube cualquier documento en PDF como prueba del flujo de entrega.', DATEADD(DAY, 14, GETDATE()), 100, 1, 1);
 
 -- 2.4 Progreso de ejemplo para el aspirante de pruebas -------------------------
 IF @TargetAspiranteID IS NOT NULL
@@ -376,11 +603,11 @@ BEGIN
     (@TargetAspiranteID, @UnidadID5, 'Asignado', GETDATE());
 
     UPDATE dbo.Ind_ProgresoAspirante
-    SET Estado = 'Calificado', Calificacion = 95.00, FechaEnvio = GETDATE(), ComentariosEvaluador = 'Excelente trabajo inicial.'
+    SET Estado = 'Calificado', Calificacion = 95.00, FechaEnvio = GETDATE(), ComentariosEvaluador = 'Excelente trabajo inicial.', UsuarioCalificadorID = @UsuarioCoordinadorID
     WHERE AspiranteID = @TargetAspiranteID AND UnidadID = @UnidadID1;
 
     UPDATE dbo.Ind_ProgresoAspirante
-    SET Estado = 'Calificado', Calificacion = 88.00, FechaEnvio = GETDATE(), ComentariosEvaluador = 'Buen desempeño en la evaluación.'
+    SET Estado = 'Calificado', Calificacion = 88.00, FechaEnvio = GETDATE(), ComentariosEvaluador = 'Buen desempeño en la evaluación.', UsuarioCalificadorID = @UsuarioCoordinadorID
     WHERE AspiranteID = @TargetAspiranteID AND UnidadID = @UnidadID2;
 
     PRINT 'Materias, unidades, materiales y progreso de ejemplo cargados.';
@@ -398,5 +625,5 @@ PRINT '========================================';
 SELECT NombreUsuario, CorreoElectronico, 'Password123!' AS ContrasenaInicial, R.Nombre AS RolAsignado
 FROM dbo.Usuarios U
 INNER JOIN dbo.Roles R ON U.RolID = R.RolID
-WHERE CorreoElectronico IN ('aspirante@test.com', 'coordinador@test.com', 'director@test.com', 'admin@test.com');
+WHERE CorreoElectronico IN ('aspirante@test.com', 'coordinador@test.com', 'maestro@test.com', 'admin@test.com');
 GO

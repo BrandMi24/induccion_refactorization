@@ -11,6 +11,125 @@
     <p class="text-muted mb-0">Estadísticas generales del sistema de inducción.</p>
 </div>
 
+<div class="card mb-4" style="overflow: visible;">
+    <div class="card-body py-3">
+        @using (Html.BeginForm("Reportes", "Admin", FormMethod.Get))
+        {
+            var carreraIdsFiltro = (int[])ViewBag.CarreraIds;
+            var calificadorIdsFiltro = (int[])ViewBag.CalificadorIds;
+            var carrerasFiltro = (List<induccion_refactorization.Models.Carrera>)ViewBag.CarrerasFiltro;
+            var coordinadoresFiltro = (List<induccion_refactorization.Models.Usuario>)ViewBag.CoordinadoresFiltro;
+            var maestrosFiltro = (List<induccion_refactorization.Models.Usuario>)ViewBag.MaestrosFiltro;
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Carrera</label>
+                    <div class="dropdown">
+                        <button type="button" class="form-select form-select-sm text-start dropdown-toggle" id="carreraDropdownBtn"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                            Todas
+                        </button>
+                        <ul class="dropdown-menu p-2" style="max-height: 250px; overflow-y: auto; min-width: 100%;" aria-labelledby="carreraDropdownBtn">
+                            <li>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="carreraTodasChk" />
+                                    <label class="form-check-label fw-semibold" for="carreraTodasChk">Todas</label>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider my-1" /></li>
+                            @foreach (var carrera in carrerasFiltro)
+                            {
+                                <li>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input carrera-checkbox" name="carreraId" value="@carrera.CarreraID" id="carreraChk_@carrera.CarreraID" @(carreraIdsFiltro.Contains(carrera.CarreraID) ? "checked=\"checked\"" : "") />
+                                        <label class="form-check-label" for="carreraChk_@carrera.CarreraID">@carrera.Nombre</label>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Periodo</label>
+                    @Html.DropDownList("periodoId", (SelectList)ViewBag.PeriodosFiltro, "Todos", new { @class = "form-select form-select-sm" })
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Coordinador / Maestro</label>
+                    <div class="dropdown">
+                        <button type="button" class="form-select form-select-sm text-start dropdown-toggle" id="calificadorDropdownBtn"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                            Todos
+                        </button>
+                        <ul class="dropdown-menu p-2" style="max-height: 250px; overflow-y: auto; min-width: 100%;" aria-labelledby="calificadorDropdownBtn">
+                            <li>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="calificadorTodosChk" />
+                                    <label class="form-check-label fw-semibold" for="calificadorTodosChk">Todos</label>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider my-1" /></li>
+                            <li><div class="small text-muted text-uppercase">Coordinadores</div></li>
+                            @foreach (var coordinador in coordinadoresFiltro)
+                            {
+                                <li>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input calificador-checkbox" name="calificadorId" value="@coordinador.UsuarioID" id="calificadorChk_@coordinador.UsuarioID" @(calificadorIdsFiltro.Contains(coordinador.UsuarioID) ? "checked=\"checked\"" : "") />
+                                        <label class="form-check-label" for="calificadorChk_@coordinador.UsuarioID">@coordinador.NombreCompleto</label>
+                                    </div>
+                                </li>
+                            }
+                            <li><div class="small text-muted text-uppercase mt-1">Maestros</div></li>
+                            @foreach (var maestro in maestrosFiltro)
+                            {
+                                <li>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input calificador-checkbox" name="calificadorId" value="@maestro.UsuarioID" id="calificadorChk_@maestro.UsuarioID" @(calificadorIdsFiltro.Contains(maestro.UsuarioID) ? "checked=\"checked\"" : "") />
+                                        <label class="form-check-label" for="calificadorChk_@maestro.UsuarioID">@maestro.NombreCompleto</label>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">Estado</label>
+                    @{
+                        var activoFiltroReporte = ViewBag.Activo as bool?;
+                    }
+                    <select name="activo" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        @if (activoFiltroReporte == true)
+                        {
+                            <option value="true" selected="selected">Activos</option>
+                        }
+                        else
+                        {
+                            <option value="true">Activos</option>
+                        }
+                        @if (activoFiltroReporte == false)
+                        {
+                            <option value="false" selected="selected">Inactivos</option>
+                        }
+                        else
+                        {
+                            <option value="false">Inactivos</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-1 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary flex-grow-1" title="Filtrar">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <a href="@Url.Action("Reportes", "Admin")" class="small">
+                    <i class="fas fa-times"></i> Limpiar filtros
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
 <div class="card mb-4">
     <div class="card-header">Usuarios por Rol</div>
     <div class="card-body">
@@ -26,19 +145,19 @@
             </div>
             <div class="col-md-3 col-sm-6">
                 <div class="stat-card">
-                    <div class="icon-badge icon-badge-primary"><i class="fas fa-user-tie"></i></div>
+                    <div class="icon-badge icon-badge-primary"><i class="fas fa-users-cog"></i></div>
                     <div>
-                        <div class="stat-card-value">@Model.TotalDirectores</div>
-                        <div class="stat-card-label">Directores</div>
+                        <div class="stat-card-value">@Model.TotalCoordinadores</div>
+                        <div class="stat-card-label">Coordinadores</div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3 col-sm-6">
                 <div class="stat-card">
-                    <div class="icon-badge icon-badge-primary"><i class="fas fa-users-cog"></i></div>
+                    <div class="icon-badge icon-badge-primary"><i class="fas fa-chalkboard-teacher"></i></div>
                     <div>
-                        <div class="stat-card-value">@Model.TotalCoordinadores</div>
-                        <div class="stat-card-label">Coordinadores</div>
+                        <div class="stat-card-value">@Model.TotalMaestros</div>
+                        <div class="stat-card-label">Maestros</div>
                     </div>
                 </div>
             </div>
@@ -86,7 +205,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4 col-sm-6">
+            <div class="col-md-4 col-sm-6 offset-md-4">
                 <div class="stat-card">
                     <div class="icon-badge icon-badge-info"><i class="fas fa-file-upload"></i></div>
                     <div>
@@ -195,3 +314,60 @@
         }
     </div>
 </div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            function setupTodosToggle(todosId, itemsSelector, buttonId, todosLabel) {
+                var todosChk = document.getElementById(todosId);
+                var itemChks = document.querySelectorAll(itemsSelector);
+                var button = document.getElementById(buttonId);
+
+                function updateButtonLabel() {
+                    if (todosChk.checked) {
+                        button.textContent = todosLabel;
+                        return;
+                    }
+                    var checked = Array.from(itemChks).filter(function (chk) { return chk.checked; });
+                    if (checked.length === 0) {
+                        button.textContent = todosLabel;
+                    } else if (checked.length === 1) {
+                        button.textContent = checked[0].nextElementSibling.textContent;
+                    } else {
+                        button.textContent = checked.length + ' seleccionados';
+                    }
+                }
+
+                function applyTodosState() {
+                    itemChks.forEach(function (chk) {
+                        chk.disabled = todosChk.checked;
+                        if (todosChk.checked) {
+                            chk.checked = false;
+                        }
+                    });
+                    updateButtonLabel();
+                }
+
+                // Al cargar: si no hay nada seleccionado individualmente, "Todas/Todos"
+                // empieza marcado (equivalente a no filtrar).
+                var anyChecked = Array.from(itemChks).some(function (chk) { return chk.checked; });
+                todosChk.checked = !anyChecked;
+                applyTodosState();
+
+                todosChk.addEventListener('change', applyTodosState);
+
+                itemChks.forEach(function (chk) {
+                    chk.addEventListener('change', function () {
+                        if (chk.checked) {
+                            todosChk.checked = false;
+                        }
+                        updateButtonLabel();
+                    });
+                });
+            }
+
+            setupTodosToggle('carreraTodasChk', '.carrera-checkbox', 'carreraDropdownBtn', 'Todas');
+            setupTodosToggle('calificadorTodosChk', '.calificador-checkbox', 'calificadorDropdownBtn', 'Todos');
+        });
+    </script>
+}

@@ -17,7 +17,7 @@ namespace induccion_refactorization.Filters
         /// <summary>
         /// Initialize the attribute with allowed role IDs
         /// </summary>
-        /// <param name="allowedRoles">One or more role IDs (1=Admin, 2=Director, 3=Coordinador, 4=Aspirante)</param>
+        /// <param name="allowedRoles">One or more role IDs (1=Admin, 2=Director [deprecated, no longer has app access], 3=Coordinador, 4=Aspirante, 5=Maestro)</param>
         public RoleAuthorizeAttribute(params int[] allowedRoles)
         {
             _allowedRoles = allowedRoles;

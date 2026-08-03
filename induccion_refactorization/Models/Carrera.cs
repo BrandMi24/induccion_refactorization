@@ -11,6 +11,7 @@ namespace induccion_refactorization.Models
         public Carrera()
         {
             Ind_Materias = new HashSet<Ind_Materia>();
+            Usuarios = new HashSet<Usuario>();
         }
 
         [Key]
@@ -28,5 +29,8 @@ namespace induccion_refactorization.Models
         // Navigation Properties
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Ind_Materia> Ind_Materias { get; set; }
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Usuario> Usuarios { get; set; }
     }
 }

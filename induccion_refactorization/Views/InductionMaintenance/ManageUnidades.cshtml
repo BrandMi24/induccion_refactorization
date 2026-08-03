@@ -1,12 +1,18 @@
 @model IEnumerable<induccion_refactorization.Models.Ind_Unidad>
 @{
     ViewBag.Title = "Gestionar Unidades";
+    var rolIdSesion = Session["RolID"] != null ? (int)Session["RolID"] : 0;
+    var unidades = (Model ?? new List<induccion_refactorization.Models.Ind_Unidad>()).OrderBy(u => u.Orden).ToList();
+    var materiaId = (int)(ViewBag.MateriaID ?? 0);
+    bool sinUnidades = !unidades.Any();
+    bool puedeAsignar = rolIdSesion == 1 || rolIdSesion == 3 || rolIdSesion == 5;
+    var tiposRecurso = new List<string> { "PDF", "Video", "Enlace", "Documento" };
 }
 
-<div class="container mt-4">
+<div class="mt-4">
     <div class="row mb-4">
         <div class="col-md-12">
-            <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-link">
+            <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-arrow-left"></i> Volver a Materias
             </a>
         </div>
@@ -14,169 +20,670 @@
 
     <div class="row mb-4">
         <div class="col-md-12">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h2><i class="fas fa-list"></i> Gestionar Unidades</h2>
-                    <p class="text-muted">Materia: <strong>@ViewBag.MateriaNombre</strong></p>
+                    <p class="text-muted mb-0">Materia: <strong>@ViewBag.MateriaNombre</strong></p>
                 </div>
-                <div>
-                    <a href="@Url.Action("CreateUnidad", "InductionMaintenance", new { materiaId = ViewBag.MateriaID ?? Model.FirstOrDefault()?.MateriaID })" 
-                       class="btn btn-primary">
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#modalAgregarMaterial" @Html.Raw(sinUnidades ? "disabled" : "")>
+                        <i class="fas fa-file"></i> Agregar Material
+                    </button>
+                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalAgregarEntregable" @Html.Raw(sinUnidades ? "disabled" : "")>
+                        <i class="fas fa-file-upload"></i> Agregar Entregable
+                    </button>
+                    @if (puedeAsignar)
+                    {
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAsignar" @Html.Raw(sinUnidades ? "disabled" : "")>
+                            <i class="fas fa-user-check"></i> Asignar
+                        </button>
+                    }
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaUnidad">
                         <i class="fas fa-plus"></i> Nueva Unidad
-                    </a>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    @if (Model != null && Model.Any())
+    @if (!sinUnidades)
     {
-        foreach (var unidad in Model)
-        {
-            var entregablesActivos = unidad.Ind_Entregables?.Where(e => e.Activo).ToList();
+        <div class="accordion" id="accordionUnidades">
+            @foreach (var unidad in unidades)
+            {
+                var materiales = (unidad.Ind_Materiales ?? new List<induccion_refactorization.Models.Ind_Material>()).OrderBy(m => m.Orden).ToList();
+                var entregablesActivos = (unidad.Ind_Entregables ?? new List<induccion_refactorization.Models.Ind_Entregable>()).Where(e => e.Activo).OrderBy(e => e.Orden).ToList();
 
-            <div class="card mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fas fa-list-ol"></i>
-                        Unidad @unidad.Orden: @unidad.Nombre
-                    </h5>
-                    <div>
-                        <a href="@Url.Action("CreateMaterial", "InductionMaintenance", new { unidadId = unidad.UnidadID })"
-                           class="btn btn-sm btn-primary">
-                            <i class="fas fa-plus"></i> Agregar Material
-                        </a>
-                        <a href="@Url.Action("CreateEntregable", "InductionMaintenance", new { unidadId = unidad.UnidadID })"
-                           class="btn btn-sm btn-warning">
-                            <i class="fas fa-file-upload"></i> Agregar Entregable
-                        </a>
-                        @using (Html.BeginForm("DeleteUnidad", "InductionMaintenance", new { id = unidad.UnidadID }, FormMethod.Post, new { @class = "d-inline" }))
+                <div class="accordion-item" data-unidad-id="@unidad.UnidadID">
+                    <h2 class="accordion-header d-flex align-items-stretch">
+                        @if (unidades.Count > 1)
                         {
-                            @Html.AntiForgeryToken()
-                            <button type="submit" 
-                                    class="btn btn-sm btn-danger btn-icon" 
-                                    onclick="return confirm('¿Eliminar esta unidad y todos sus materiales?');">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <span class="drag-handle-unidad d-flex align-items-center px-2 text-muted" style="cursor: grab;" title="Arrastrar para reordenar">
+                                <i class="fas fa-grip-vertical"></i>
+                            </span>
                         }
-                    </div>
-                </div>
-                <div class="card-body">
-                    @if (unidad.Ind_Materiales != null && unidad.Ind_Materiales.Any())
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Nombre</th>
-                                        <th>Tipo</th>
-                                        <th>URL</th>
-                                        <th class="text-center">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var material in unidad.Ind_Materiales)
+                        <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#unidad-@unidad.UnidadID">
+                            <i class="fas fa-list-ol me-2"></i> Unidad @unidad.Orden: @unidad.Nombre
+                        </button>
+                    </h2>
+                    <div id="unidad-@unidad.UnidadID" class="accordion-collapse collapse" data-bs-parent="#accordionUnidades">
+                        <div class="accordion-body">
+                            <div class="d-flex justify-content-end gap-2 mb-3">
+                                <button type="button" class="btn btn-sm btn-secondary"
+                                        data-bs-toggle="modal" data-bs-target="#modalEditarUnidad"
+                                        data-id="@unidad.UnidadID" data-nombre="@unidad.Nombre">
+                                    <i class="fas fa-pen"></i> Editar
+                                </button>
+                                @using (Html.BeginForm("DeleteUnidad", "InductionMaintenance", new { id = unidad.UnidadID }, FormMethod.Post, new { @class = "d-inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('¿Eliminar esta unidad y todos sus materiales?');">
+                                        <i class="fas fa-trash"></i> Eliminar
+                                    </button>
+                                }
+                            </div>
+
+                            <h6><i class="fas fa-file"></i> Materiales</h6>
+                            @if (materiales.Any())
+                            {
+                                <ul class="list-group sortable-materiales mb-3" data-unidad-id="@unidad.UnidadID">
+                                    @foreach (var material in materiales)
                                     {
-                                        <tr>
-                                            <td data-label="Nombre">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center" data-id="@material.MaterialID">
+                                            <span class="d-flex align-items-center gap-2">
+                                                @if (materiales.Count > 1)
+                                                {
+                                                    <i class="fas fa-grip-vertical drag-handle-material text-muted" style="cursor: grab;" title="Arrastrar para reordenar"></i>
+                                                }
                                                 <i class="fas fa-file"></i>
                                                 @material.Nombre
-                                            </td>
-                                            <td data-label="Tipo">
                                                 <span class="badge bg-info">@material.TipoRecurso</span>
-                                            </td>
-                                            <td data-label="URL">
-                                                <a href="@material.RutaURL" target="_blank" class="text-truncate d-inline-block" style="max-width: 300px;">
-                                                    @material.RutaURL
-                                                </a>
-                                            </td>
-                                            <td class="text-center" data-label="Acciones">
+                                            </span>
+                                            <span class="d-flex align-items-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                        data-bs-toggle="modal" data-bs-target="#modalEditarMaterial"
+                                                        data-id="@material.MaterialID" data-nombre="@material.Nombre"
+                                                        data-tipo="@material.TipoRecurso" data-url="@material.RutaURL">
+                                                    <i class="fas fa-pen"></i>
+                                                </button>
                                                 @using (Html.BeginForm("DeleteMaterial", "InductionMaintenance", new { id = material.MaterialID }, FormMethod.Post, new { @class = "d-inline" }))
                                                 {
                                                     @Html.AntiForgeryToken()
-                                                    <button type="submit"
-                                                            class="btn btn-sm btn-danger btn-icon"
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
                                                             onclick="return confirm('¿Eliminar este material?');">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 }
-                                            </td>
-                                        </tr>
+                                            </span>
+                                        </li>
                                     }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                    else
-                    {
-                        <p class="text-muted mb-0">
-                            <i class="fas fa-info-circle"></i>
-                            No hay materiales en esta unidad.
-                            <a href="@Url.Action("CreateMaterial", new { unidadId = unidad.UnidadID })">Agregar el primero</a>
-                        </p>
-                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-3">
+                                    <i class="fas fa-info-circle"></i> No hay materiales en esta unidad.
+                                    <button type="button" class="btn btn-link p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalAgregarMaterial" data-preselect-unidad="@unidad.UnidadID">
+                                        Agregar el primero
+                                    </button>
+                                </p>
+                            }
 
-                    <hr />
-                    <h6><i class="fas fa-file-upload"></i> Entregables</h6>
-                    @if (entregablesActivos != null && entregablesActivos.Any())
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Título</th>
-                                        <th>Fecha Límite</th>
-                                        <th>Ponderación</th>
-                                        <th class="text-center">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            <h6><i class="fas fa-file-upload"></i> Entregables</h6>
+                            @if (entregablesActivos.Any())
+                            {
+                                <ul class="list-group sortable-entregables" data-unidad-id="@unidad.UnidadID">
                                     @foreach (var entregable in entregablesActivos)
                                     {
-                                        <tr>
-                                            <td data-label="Título">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center" data-id="@entregable.EntregableID">
+                                            <span class="d-flex align-items-center gap-2">
+                                                @if (entregablesActivos.Count > 1)
+                                                {
+                                                    <i class="fas fa-grip-vertical drag-handle-entregable text-muted" style="cursor: grab;" title="Arrastrar para reordenar"></i>
+                                                }
                                                 <i class="fas fa-file-alt"></i>
                                                 @entregable.Titulo
-                                            </td>
-                                            <td data-label="Fecha Límite">
-                                                @(entregable.FechaLimite.HasValue ? entregable.FechaLimite.Value.ToString("dd/MM/yyyy") : "Sin límite")
-                                            </td>
-                                            <td data-label="Ponderación">@entregable.PonderacionMax.ToString("F2")</td>
-                                            <td class="text-center" data-label="Acciones">
+                                                <small class="text-muted">
+                                                    (@(entregable.FechaLimite.HasValue ? entregable.FechaLimite.Value.ToString("dd/MM/yyyy") : "Sin límite") &middot; @entregable.PonderacionMax.ToString("F2") pts)
+                                                </small>
+                                            </span>
+                                            <span class="d-flex align-items-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                        data-bs-toggle="modal" data-bs-target="#modalEditarEntregable"
+                                                        data-id="@entregable.EntregableID" data-titulo="@entregable.Titulo"
+                                                        data-instrucciones="@entregable.Instrucciones"
+                                                        data-fecha="@(entregable.FechaLimite.HasValue ? entregable.FechaLimite.Value.ToString("yyyy-MM-dd") : "")"
+                                                        data-ponderacion="@entregable.PonderacionMax.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                                    <i class="fas fa-pen"></i>
+                                                </button>
                                                 @using (Html.BeginForm("DeleteEntregable", "InductionMaintenance", new { id = entregable.EntregableID }, FormMethod.Post, new { @class = "d-inline" }))
                                                 {
                                                     @Html.AntiForgeryToken()
-                                                    <button type="submit"
-                                                            class="btn btn-sm btn-danger btn-icon"
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
                                                             onclick="return confirm('¿Eliminar este entregable?');">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 }
-                                            </td>
-                                        </tr>
+                                            </span>
+                                        </li>
                                     }
-                                </tbody>
-                            </table>
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-0">
+                                    <i class="fas fa-info-circle"></i> No hay entregables en esta unidad.
+                                    <button type="button" class="btn btn-link p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalAgregarEntregable" data-preselect-unidad="@unidad.UnidadID">
+                                        Agregar el primero
+                                    </button>
+                                </p>
+                            }
                         </div>
-                    }
-                    else
-                    {
-                        <p class="text-muted mb-0">
-                            <i class="fas fa-info-circle"></i>
-                            No hay entregables en esta unidad.
-                            <a href="@Url.Action("CreateEntregable", new { unidadId = unidad.UnidadID })">Agregar el primero</a>
-                        </p>
-                    }
+                    </div>
                 </div>
-            </div>
-        }
+            }
+        </div>
     }
     else
     {
         <div class="alert alert-info text-center">
             <i class="fas fa-info-circle"></i>
             No hay unidades creadas para esta materia.
-            <a href="@Url.Action("CreateUnidad", new { materiaId = ViewBag.MateriaID })" class="alert-link">Crear la primera unidad</a>
+            <button type="button" class="btn btn-link p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalNuevaUnidad">
+                Crear la primera unidad
+            </button>
         </div>
     }
 </div>
+
+<div style="display:none">@Html.AntiForgeryToken()</div>
+
+@* ===================== Modal: Nueva Unidad ===================== *@
+<div class="modal fade" id="modalNuevaUnidad" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("CreateUnidad", "InductionMaintenance", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="MateriaID" value="@materiaId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Nueva Unidad</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="Nombre" class="form-control" placeholder="Ej: Historia y Filosofía Institucional" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Unidad</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Agregar Material ===================== *@
+<div class="modal fade" id="modalAgregarMaterial" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("CreateMaterial", "InductionMaintenance", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Agregar Material</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="control-label">Unidad</label>
+                        <select name="UnidadID" id="agregarMaterialUnidadSelect" class="form-select" required>
+                            <option value="">-- Selecciona unidad --</option>
+                            @foreach (var u in unidades)
+                            {
+                                <option value="@u.UnidadID">Unidad @u.Orden: @u.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="Nombre" class="form-control" placeholder="Ej: Historia de la UTTN - Documento Oficial" required />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Tipo de Recurso</label>
+                        <select name="TipoRecurso" class="form-select" required>
+                            <option value="">-- Seleccione tipo --</option>
+                            @foreach (var tipo in tiposRecurso)
+                            {
+                                <option value="@tipo">@tipo</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">URL del Recurso</label>
+                        <input type="text" name="RutaURL" class="form-control" placeholder="https://www.uttn.edu.mx/docs/archivo.pdf" required />
+                        <small class="form-text text-muted">URL completa del recurso (debe comenzar con http:// o https://)</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Material</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Agregar Entregable ===================== *@
+<div class="modal fade" id="modalAgregarEntregable" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("CreateEntregable", "InductionMaintenance", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-file-upload"></i> Agregar Entregable</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="control-label">Unidad</label>
+                        <select name="UnidadID" id="agregarEntregableUnidadSelect" class="form-select" required>
+                            <option value="">-- Selecciona unidad --</option>
+                            @foreach (var u in unidades)
+                            {
+                                <option value="@u.UnidadID">Unidad @u.Orden: @u.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Título</label>
+                        <input type="text" name="Titulo" class="form-control" placeholder="Ej: Ensayo sobre valores institucionales" required />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Instrucciones</label>
+                        <textarea name="Instrucciones" class="form-control" rows="4" placeholder="Describe qué debe entregar el aspirante..."></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-3">
+                            <label class="control-label">Fecha Límite</label>
+                            <input type="date" name="FechaLimite" class="form-control" />
+                        </div>
+                        <div class="col-md-6 form-group mb-3">
+                            <label class="control-label">Ponderación Máxima</label>
+                            <input type="number" name="PonderacionMax" class="form-control" step="0.01" min="0" max="100" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Entregable</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (puedeAsignar)
+{
+    @* ===================== Modal: Asignar Unidad ===================== *@
+    <div class="modal fade" id="modalAsignar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                @using (Html.BeginForm("AsignarUnidad", "Coordinador", FormMethod.Post, new { @class = "asignar-form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-user-check"></i> Asignar Unidad</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group mb-3">
+                            <label class="control-label">Unidad</label>
+                            <select name="unidadId" id="asignarUnidadSelect" class="form-select" required>
+                                <option value="">-- Selecciona unidad --</option>
+                                @foreach (var u in unidades)
+                                {
+                                    <option value="@u.UnidadID">Unidad @u.Orden: @u.Nombre</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="control-label d-block">¿A quién asignar?</label>
+                            <div class="form-check">
+                                <input type="radio" class="form-check-input" name="modo" value="todos" id="modoTodos" checked="checked" />
+                                <label class="form-check-label" for="modoTodos">Todos mis aspirantes</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="radio" class="form-check-input" name="modo" value="manual" id="modoManual" />
+                                <label class="form-check-label" for="modoManual">Seleccionar manualmente</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3" id="listaManualContainer" style="display: none;">
+                            <label class="form-label small text-muted mb-1">Buscar en la lista</label>
+                            <input type="text" id="filtroAspirantes" class="form-control form-control-sm mb-2" placeholder="Nombre o matrícula..." />
+                            <div id="asignarAspirantesContainer">
+                                <p class="text-muted small mb-0">Selecciona una unidad para ver los aspirantes.</p>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-0">
+                            <input type="checkbox" class="form-check-input" name="reasignar" value="true" id="reasignar" />
+                            <label class="form-check-label" for="reasignar">
+                                Reasignar a quienes ya tienen esta unidad (reinicia su estado a "Asignado" y borra su calificación previa)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Asignar</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* ===================== Modal: Editar Unidad ===================== *@
+<div class="modal fade" id="modalEditarUnidad" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("EditUnidad", "InductionMaintenance", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="unidadId" id="editUnidadId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-pen"></i> Editar Unidad</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="nombre" id="editUnidadNombre" class="form-control" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Editar Material ===================== *@
+<div class="modal fade" id="modalEditarMaterial" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("EditMaterial", "InductionMaintenance", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="materialId" id="editMaterialId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-pen"></i> Editar Material</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="nombre" id="editMaterialNombre" class="form-control" required />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Tipo de Recurso</label>
+                        <select name="tipoRecurso" id="editMaterialTipo" class="form-select" required>
+                            @foreach (var tipo in tiposRecurso)
+                            {
+                                <option value="@tipo">@tipo</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">URL del Recurso</label>
+                        <input type="text" name="rutaURL" id="editMaterialUrl" class="form-control" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Editar Entregable ===================== *@
+<div class="modal fade" id="modalEditarEntregable" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("EditEntregable", "InductionMaintenance", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="entregableId" id="editEntregableId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-pen"></i> Editar Entregable</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="control-label">Título</label>
+                        <input type="text" name="titulo" id="editEntregableTitulo" class="form-control" required />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Instrucciones</label>
+                        <textarea name="instrucciones" id="editEntregableInstrucciones" class="form-control" rows="4"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-3">
+                            <label class="control-label">Fecha Límite</label>
+                            <input type="date" name="fechaLimite" id="editEntregableFecha" class="form-control" />
+                        </div>
+                        <div class="col-md-6 form-group mb-3">
+                            <label class="control-label">Ponderación Máxima</label>
+                            <input type="number" name="ponderacionMax" id="editEntregablePonderacion" class="form-control" step="0.01" min="0" max="100" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"
+            integrity="sha512-TelkP3PCMJv+viMWynjKcvLsQzx6dJHvIGhfqzFtZKgAjKM1YPqcwzzDEoTc/BHjf43PcPzTQOjuTr4YdE8lNQ=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        $(document).ready(function () {
+            var token = $('input[name="__RequestVerificationToken"]').first().val();
+
+            function escapeHtml(str) {
+                return $('<div>').text(str || '').html();
+            }
+
+            // ---------- Drag and drop reordering ----------
+            // Todo este bloque depende de SortableJS (CDN externo). Si la librería no
+            // cargó (red bloqueada, CDN caído, etc.) se omite el reordenamiento por
+            // arrastre, pero el resto de la página (modales de Agregar/Editar/Asignar)
+            // debe seguir funcionando con normalidad.
+            if (typeof Sortable !== 'undefined') {
+                var unidadesContainer = document.getElementById('accordionUnidades');
+                if (unidadesContainer && unidadesContainer.children.length > 1) {
+                    new Sortable(unidadesContainer, {
+                        handle: '.drag-handle-unidad',
+                        animation: 150,
+                        onEnd: function () {
+                            var ids = Array.from(unidadesContainer.children).map(function (el) { return el.dataset.unidadId; });
+                            $.ajax({
+                                url: '@Url.Action("ReordenarUnidades", "InductionMaintenance")',
+                                type: 'POST',
+                                traditional: true,
+                                data: { materiaId: @materiaId, orderedIds: ids, __RequestVerificationToken: token }
+                            });
+                        }
+                    });
+                }
+
+                document.querySelectorAll('.sortable-materiales').forEach(function (el) {
+                    if (el.children.length > 1) {
+                        new Sortable(el, {
+                            handle: '.drag-handle-material',
+                            animation: 150,
+                            onEnd: function () {
+                                var ids = Array.from(el.children).map(function (li) { return li.dataset.id; });
+                                $.ajax({
+                                    url: '@Url.Action("ReordenarMateriales", "InductionMaintenance")',
+                                    type: 'POST',
+                                    traditional: true,
+                                    data: { unidadId: el.dataset.unidadId, orderedIds: ids, __RequestVerificationToken: token }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                document.querySelectorAll('.sortable-entregables').forEach(function (el) {
+                    if (el.children.length > 1) {
+                        new Sortable(el, {
+                            handle: '.drag-handle-entregable',
+                            animation: 150,
+                            onEnd: function () {
+                                var ids = Array.from(el.children).map(function (li) { return li.dataset.id; });
+                                $.ajax({
+                                    url: '@Url.Action("ReordenarEntregables", "InductionMaintenance")',
+                                    type: 'POST',
+                                    traditional: true,
+                                    data: { unidadId: el.dataset.unidadId, orderedIds: ids, __RequestVerificationToken: token }
+                                });
+                            }
+                        });
+                    }
+                });
+            } else if (window.console) {
+                console.warn('SortableJS no se cargó; el reordenamiento por arrastre está deshabilitado en esta página.');
+            }
+
+            // ---------- Preselect unidad when opening Agregar Material/Entregable from an empty unit ----------
+            document.getElementById('modalAgregarMaterial').addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                var pre = button && button.dataset ? button.dataset.preselectUnidad : null;
+                if (pre) {
+                    document.getElementById('agregarMaterialUnidadSelect').value = pre;
+                }
+            });
+
+            document.getElementById('modalAgregarEntregable').addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                var pre = button && button.dataset ? button.dataset.preselectUnidad : null;
+                if (pre) {
+                    document.getElementById('agregarEntregableUnidadSelect').value = pre;
+                }
+            });
+
+            // ---------- Editar Unidad ----------
+            document.getElementById('modalEditarUnidad').addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                document.getElementById('editUnidadId').value = button.dataset.id;
+                document.getElementById('editUnidadNombre').value = button.dataset.nombre;
+            });
+
+            // ---------- Editar Material ----------
+            document.getElementById('modalEditarMaterial').addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                document.getElementById('editMaterialId').value = button.dataset.id;
+                document.getElementById('editMaterialNombre').value = button.dataset.nombre;
+                document.getElementById('editMaterialTipo').value = button.dataset.tipo;
+                document.getElementById('editMaterialUrl').value = button.dataset.url;
+            });
+
+            // ---------- Editar Entregable ----------
+            document.getElementById('modalEditarEntregable').addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                document.getElementById('editEntregableId').value = button.dataset.id;
+                document.getElementById('editEntregableTitulo').value = button.dataset.titulo;
+                document.getElementById('editEntregableInstrucciones').value = button.dataset.instrucciones;
+                document.getElementById('editEntregableFecha').value = button.dataset.fecha;
+                document.getElementById('editEntregablePonderacion').value = button.dataset.ponderacion;
+            });
+
+            // ---------- Asignar Unidad ----------
+            var selectUnidadAsignar = document.getElementById('asignarUnidadSelect');
+            var aspirantesContainer = document.getElementById('asignarAspirantesContainer');
+
+            function toggleModo() {
+                var manual = $('#modoManual').is(':checked');
+                $('#listaManualContainer').toggle(manual);
+            }
+            $('input[name="modo"]').on('change', toggleModo);
+            toggleModo();
+
+            function cargarAspirantes(unidadId) {
+                if (!aspirantesContainer) { return; }
+                if (!unidadId) {
+                    aspirantesContainer.innerHTML = '<p class="text-muted small mb-0">Selecciona una unidad para ver los aspirantes.</p>';
+                    return;
+                }
+                aspirantesContainer.innerHTML = '<p class="text-muted small mb-0"><i class="fas fa-spinner fa-spin"></i> Cargando...</p>';
+                $.getJSON('@Url.Action("AsignarUnidadAspirantes", "Coordinador")', { unidadId: unidadId }, function (resp) {
+                    if (!resp.success) {
+                        aspirantesContainer.innerHTML = '<p class="text-danger small mb-0">' + escapeHtml(resp.message || 'Error al cargar aspirantes.') + '</p>';
+                        return;
+                    }
+                    if (!resp.aspirantes.length) {
+                        aspirantesContainer.innerHTML = '<p class="text-muted small mb-0">No hay aspirantes en tu carrera todavía.</p>';
+                        return;
+                    }
+                    var html = '<div class="row g-2" id="aspirantesListContainer" style="max-height:320px; overflow-y:auto;">';
+                    resp.aspirantes.forEach(function (a) {
+                        html += '<div class="col-md-6 aspirante-item" data-nombre="' + escapeHtml((a.nombre || '').toLowerCase()) + '" data-matricula="' + escapeHtml((a.matricula || '').toLowerCase()) + '">' +
+                            '<div class="form-check d-flex align-items-center gap-2">' +
+                            '<input type="checkbox" class="form-check-input aspirante-checkbox" name="aspiranteIds" value="' + a.id + '" id="asp_' + a.id + '" />' +
+                            '<label class="form-check-label flex-grow-1" for="asp_' + a.id + '">' + escapeHtml(a.nombre) +
+                            '<small class="text-muted d-block">Matrícula: ' + escapeHtml(a.matricula || 'N/A') + '</small></label>' +
+                            (a.yaAsignado ? '<span class="badge bg-secondary">Ya asignado</span>' : '') +
+                            '</div></div>';
+                    });
+                    html += '</div>';
+                    aspirantesContainer.innerHTML = html;
+                });
+            }
+
+            if (selectUnidadAsignar) {
+                selectUnidadAsignar.addEventListener('change', function () {
+                    cargarAspirantes(this.value);
+                });
+            }
+
+            $(document).on('input', '#filtroAspirantes', function () {
+                var term = $(this).val().toLowerCase();
+                $('.aspirante-item').each(function () {
+                    var nombre = $(this).data('nombre') || '';
+                    var matricula = $(this).data('matricula') || '';
+                    var visible = String(nombre).indexOf(term) !== -1 || String(matricula).indexOf(term) !== -1;
+                    $(this).toggle(visible);
+                });
+            });
+
+            $('.asignar-form').on('submit', function (e) {
+                var manual = $('#modoManual').is(':checked');
+                if (manual && $('.aspirante-checkbox:checked').length === 0) {
+                    e.preventDefault();
+                    alert('Selecciona al menos un aspirante, o cambia a "Todos mis aspirantes".');
+                    return false;
+                }
+                var $btn = $(this).find('button[type="submit"]');
+                $btn.prop('disabled', true);
+                $btn.html('<i class="fas fa-spinner fa-spin"></i> Asignando...');
+            });
+        });
+    </script>
+}

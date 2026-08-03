@@ -1,6 +1,8 @@
 @model induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_Materia>
 @{
     ViewBag.Title = "Gestión de Contenido de Inducción";
+    var puedeElegirTodas = (bool)ViewBag.PuedeElegirTodasLasCarreras;
+    var carrerasList = (List<induccion_refactorization.Models.Carrera>)ViewBag.CarrerasList;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -8,9 +10,9 @@
         <h2 class="mb-1"><i class="fas fa-book text-primary"></i> Gestión de Contenido de Inducción</h2>
         <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
     </div>
-    <a href="@Url.Action("CreateMateria", "InductionMaintenance")" class="btn btn-primary">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaMateria">
         <i class="fas fa-plus"></i> Nueva Materia
-    </a>
+    </button>
 </div>
 
 <div class="row mb-4 g-3">
@@ -162,11 +164,15 @@
                                        title="Gestionar Unidades">
                                         <i class="fas fa-list"></i> Unidades
                                     </a>
-                                    <a href="@Url.Action("EditMateria", new { id = materia.MateriaID })"
-                                       class="btn btn-sm btn-outline-secondary btn-icon"
-                                       title="Editar Materia">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
+                                            title="Editar Materia"
+                                            data-bs-toggle="modal" data-bs-target="#modalEditarMateria"
+                                            data-id="@materia.MateriaID" data-nombre="@materia.Nombre"
+                                            data-descripcion="@materia.Descripcion" data-periodo-id="@materia.PeriodoID"
+                                            data-todas="@materia.TodasLasCarreras.ToString().ToLower()"
+                                            data-carrera-ids="@string.Join(",", materia.Carreras.Select(c => c.CarreraID))">
                                         <i class="fas fa-edit"></i>
-                                    </a>
+                                    </button>
                                     @using (Html.BeginForm("DeleteMateria", "InductionMaintenance", new { id = materia.MateriaID }, FormMethod.Post, new { @class = "d-inline" }))
                                     {
                                         @Html.AntiForgeryToken()
@@ -201,10 +207,147 @@
                 </div>
                 <div class="empty-state-title">No se encontraron materias</div>
                 <p class="mb-0">
-                    <a href="@Url.Action("CreateMateria")">Crear la primera materia</a>
+                    <button type="button" class="btn btn-link p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalNuevaMateria">
+                        Crear la primera materia
+                    </button>
                 </p>
             </div>
         }
+    </div>
+</div>
+
+@* ===================== Modal: Nueva Materia ===================== *@
+<div class="modal fade" id="modalNuevaMateria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            @using (Html.BeginForm("CreateMateria", "InductionMaintenance", FormMethod.Post, new { @class = "materia-form" }))
+            {
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Nueva Materia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="Nombre" class="form-control" placeholder="Ej: Introducción a la UTTN" required />
+                        <small class="form-text text-muted">Nombre descriptivo de la materia de inducción</small>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Descripción</label>
+                        <textarea name="Descripcion" class="form-control" rows="4" placeholder="Describe los objetivos y contenido de esta materia..."></textarea>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Carreras</label>
+                        @if (puedeElegirTodas)
+                        {
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="createTodasLasCarreras" name="todasLasCarreras" value="true" />
+                                <label class="form-check-label" for="createTodasLasCarreras"><strong>Visible para todas las carreras</strong></label>
+                            </div>
+                        }
+                        <input type="hidden" name="todasLasCarreras" value="false" />
+                        <div id="createCarrerasListContainer" class="row g-2 ps-2">
+                            @foreach (var carrera in carrerasList)
+                            {
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input create-carrera-checkbox" name="carreraIds" value="@carrera.CarreraID" id="createCarrera_@carrera.CarreraID" />
+                                        <label class="form-check-label" for="createCarrera_@carrera.CarreraID">@carrera.Nombre</label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <small class="form-text text-muted">
+                            @if (puedeElegirTodas)
+                            {
+                                <text>Selecciona una o más carreras, o marca la casilla de arriba para hacerla visible a todas</text>
+                            }
+                            else
+                            {
+                                <text>Solo puedes asignarla a la(s) carrera(s) que tienes a cargo</text>
+                            }
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">Periodo</label>
+                        @Html.DropDownList("PeriodoID", (SelectList)ViewBag.PeriodosList, "-- Seleccione un periodo --", new { @class = "form-select" })
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Materia</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Editar Materia ===================== *@
+<div class="modal fade" id="modalEditarMateria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            @using (Html.BeginForm("EditMateria", "InductionMaintenance", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="MateriaID" id="editMateriaId" />
+                <input type="hidden" name="Activo" value="true" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit"></i> Editar Materia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="Nombre" id="editMateriaNombre" class="form-control" required />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Descripción</label>
+                        <textarea name="Descripcion" id="editMateriaDescripcion" class="form-control" rows="4"></textarea>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Carreras</label>
+                        @if (puedeElegirTodas)
+                        {
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="editTodasLasCarreras" name="todasLasCarreras" value="true" />
+                                <label class="form-check-label" for="editTodasLasCarreras"><strong>Visible para todas las carreras</strong></label>
+                            </div>
+                        }
+                        <input type="hidden" name="todasLasCarreras" value="false" />
+                        <div id="editCarrerasListContainer" class="row g-2 ps-2">
+                            @foreach (var carrera in carrerasList)
+                            {
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input edit-carrera-checkbox" name="carreraIds" value="@carrera.CarreraID" id="editCarrera_@carrera.CarreraID" />
+                                        <label class="form-check-label" for="editCarrera_@carrera.CarreraID">@carrera.Nombre</label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <small class="form-text text-muted">
+                            @if (puedeElegirTodas)
+                            {
+                                <text>Selecciona una o más carreras, o marca la casilla de arriba para hacerla visible a todas</text>
+                            }
+                            else
+                            {
+                                <text>Solo puedes asignarla a la(s) carrera(s) que tienes a cargo</text>
+                            }
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">Periodo</label>
+                        @Html.DropDownList("PeriodoID", (SelectList)ViewBag.PeriodosList, new { @class = "form-select", id = "editMateriaPeriodo" })
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
+                </div>
+            }
+        </div>
     </div>
 </div>
 
@@ -214,6 +357,45 @@
             setTimeout(function() {
                 $('.alert').fadeOut('slow');
             }, 5000);
+
+            function toggleCarrerasList(checkboxSelector, listSelector, containerSelector) {
+                var todas = $(checkboxSelector).is(':checked');
+                $(listSelector).prop('disabled', todas);
+                $(containerSelector).css('opacity', todas ? 0.5 : 1);
+            }
+
+            $('#createTodasLasCarreras').on('change', function () {
+                toggleCarrerasList('#createTodasLasCarreras', '.create-carrera-checkbox', '#createCarrerasListContainer');
+            });
+            toggleCarrerasList('#createTodasLasCarreras', '.create-carrera-checkbox', '#createCarrerasListContainer');
+
+            $('#editTodasLasCarreras').on('change', function () {
+                toggleCarrerasList('#editTodasLasCarreras', '.edit-carrera-checkbox', '#editCarrerasListContainer');
+            });
+
+            document.getElementById('modalEditarMateria').addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                document.getElementById('editMateriaId').value = button.dataset.id;
+                document.getElementById('editMateriaNombre').value = button.dataset.nombre;
+                document.getElementById('editMateriaDescripcion').value = button.dataset.descripcion;
+                document.getElementById('editMateriaPeriodo').value = button.dataset.periodoId;
+
+                var todas = button.dataset.todas === 'true';
+                $('#editTodasLasCarreras').prop('checked', todas);
+
+                var selectedIds = (button.dataset.carreraIds || '').split(',').filter(function (v) { return v !== ''; });
+                $('.edit-carrera-checkbox').each(function () {
+                    $(this).prop('checked', selectedIds.indexOf(this.value) !== -1);
+                });
+
+                toggleCarrerasList('#editTodasLasCarreras', '.edit-carrera-checkbox', '#editCarrerasListContainer');
+            });
+
+            $('.materia-form').on('submit', function() {
+                var $btn = $(this).find('button[type="submit"]');
+                $btn.prop('disabled', true);
+                $btn.html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+            });
         });
     </script>
 }

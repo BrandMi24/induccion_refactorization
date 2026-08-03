@@ -265,6 +265,7 @@ a:focus {
     overflow: hidden;
     margin-top: 0.5rem;
     padding: 0.5rem 0;
+    min-width: 240px;
     max-width: min(300px, calc(100vw - 1.5rem));
     animation: dropdownFade 0.2s ease;
 }
@@ -317,11 +318,6 @@ a:focus {
     color: var(--gray-600);
     overflow-wrap: anywhere;
     word-break: break-word;
-}
-
-.dropdown-item {
-    white-space: normal;
-    overflow-wrap: anywhere;
 }
 
 .dropdown-item.text-danger:hover {
@@ -1528,6 +1524,14 @@ textarea:focus {
 .table-clean td {
     vertical-align: middle;
     border-color: var(--gray-100);
+}
+
+/* Los botones de Editar/Eliminar (u otras acciones) en la columna de Acciones
+   deben quedar siempre en una sola línea, uno al lado del otro; si de plano no
+   caben, que la tabla completa se desplace horizontalmente (ver
+   .table-responsive) en vez de que los botones se amontonen en varias líneas. */
+td[data-label="Acciones"] {
+    white-space: nowrap;
 }
 
 .sortable-header {
