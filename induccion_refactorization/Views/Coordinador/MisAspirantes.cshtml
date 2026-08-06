@@ -1,15 +1,61 @@
 @model induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.ViewModels.AspiranteResumenViewModel>
 @{
     ViewBag.Title = "Mis Aspirantes";
+    bool puedeCrear = ViewBag.PuedeCrear;
 }
 
-<div class="mb-4">
-    <a href="@Url.Action("Index", "Coordinador")" class="btn btn-link ps-0">
-        <i class="fas fa-arrow-left"></i> Volver al Panel
-    </a>
-    <h2 class="mb-1"><i class="fas fa-user-graduate text-primary"></i> Mis Aspirantes</h2>
-    <p class="text-muted mb-0">Aspirantes de tu(s) carrera(s) asignada(s) y su avance.</p>
+@{
+    var importCreados = TempData["ImportCreados"] as List<string>;
+    var importErrores = TempData["ImportErrores"] as List<string>;
+    bool credencialesListas = TempData["CredencialesListas"] as bool? ?? false;
+}
+
+<div class="mb-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+        <a href="@Url.Action("Index", "Coordinador")" class="btn btn-link ps-0">
+            <i class="fas fa-arrow-left"></i> Volver al Panel
+        </a>
+        <h2 class="mb-1"><i class="fas fa-user-graduate text-primary"></i> Mis Aspirantes</h2>
+        <p class="text-muted mb-0">Aspirantes de tu(s) carrera(s) asignada(s) y su avance; los que tienen entregas pendientes por revisar aparecen primero.</p>
+    </div>
+    @if (puedeCrear)
+    {
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCargaMasiva">
+            <i class="fas fa-file-excel"></i> Carga Masiva
+        </button>
+    }
 </div>
+
+@if (importCreados != null && importCreados.Any())
+{
+    <div class="alert alert-success">
+        <strong><i class="fas fa-check-circle"></i> Aspirantes creados (@importCreados.Count):</strong>
+        <ul class="mb-0 mt-2 small">
+            @foreach (var linea in importCreados)
+            {
+                <li>@linea</li>
+            }
+        </ul>
+        @if (credencialesListas)
+        {
+            <a href="@Url.Action("DescargarCredencialesGeneradas", "Coordinador")" class="btn btn-sm btn-success mt-2">
+                <i class="fas fa-file-excel"></i> Descargar Credenciales (Excel)
+            </a>
+        }
+    </div>
+}
+@if (importErrores != null && importErrores.Any())
+{
+    <div class="alert alert-warning">
+        <strong><i class="fas fa-exclamation-triangle"></i> Filas con errores (@importErrores.Count):</strong>
+        <ul class="mb-0 mt-2 small">
+            @foreach (var linea in importErrores)
+            {
+                <li>@linea</li>
+            }
+        </ul>
+    </div>
+}
 
 <div class="row mb-4 g-3">
     <div class="col-md-3 col-sm-6">
@@ -32,10 +78,10 @@
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="stat-card">
-            <div class="icon-badge icon-badge-warning"><i class="fas fa-list-check"></i></div>
+            <div class="icon-badge icon-badge-danger"><i class="fas fa-undo"></i></div>
             <div>
-                <div class="stat-card-value">@ViewBag.UnidadesPendientesCalificar</div>
-                <div class="stat-card-label">Unidades por Calificar</div>
+                <div class="stat-card-value">@ViewBag.EntregasDevueltas</div>
+                <div class="stat-card-label">Entregas Devueltas</div>
             </div>
         </div>
     </div>
@@ -44,7 +90,7 @@
             <div class="icon-badge icon-badge-info"><i class="fas fa-clipboard-check"></i></div>
             <div>
                 <div class="stat-card-value">@ViewBag.EntregasPendientesCalificar</div>
-                <div class="stat-card-label">Entregas por Calificar</div>
+                <div class="stat-card-label">Entregas por Revisar</div>
             </div>
         </div>
     </div>
@@ -58,7 +104,7 @@
                 <div class="col-md-8">
                     <label class="form-label small text-muted mb-1">Buscar</label>
                     <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm"
-                           placeholder="Nombre, matrícula o folio..." />
+                           placeholder="Nombre o folio..." />
                 </div>
                 <div class="col-md-4 d-flex gap-2">
                     <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
@@ -95,17 +141,18 @@
                                     Action = "MisAspirantes", Controller = "Coordinador", RouteValues = sortRouteValues
                                 })
                             </th>
+                            <th>Materias</th>
                             <th class="text-center">
                                 @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
                                 {
-                                    Label = "Progreso", SortField = "Progreso", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Label = "Pendientes por Revisar", SortField = "Pendientes", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
                                     Action = "MisAspirantes", Controller = "Coordinador", RouteValues = sortRouteValues
                                 })
                             </th>
                             <th class="text-center">
                                 @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
                                 {
-                                    Label = "Promedio", SortField = "Promedio", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Label = "Progreso", SortField = "Progreso", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
                                     Action = "MisAspirantes", Controller = "Coordinador", RouteValues = sortRouteValues
                                 })
                             </th>
@@ -122,10 +169,40 @@
                                             <i class="fas fa-user"></i>
                                         </div>
                                         <div>
-                                            <div class="fw-semibold">@(item.Aspirante.Usuario?.NombreCompleto)</div>
-                                            <small class="text-muted">Folio: @(item.Aspirante.Folio ?? "N/A")</small>
+                                            <div class="fw-semibold">@(item.Aspirante.NombreCompleto)</div>
+                                            <small class="text-muted">Folio: @(item.Aspirante.NombreUsuario)</small>
                                         </div>
                                     </div>
+                                </td>
+                                <td data-label="Materias">
+                                    @if (item.Materias.Any())
+                                    {
+                                        <div class="d-flex flex-wrap gap-1 align-items-center">
+                                            @foreach (var materia in item.Materias)
+                                            {
+                                                var claseSemaforo = materia.Semaforo == "completo" ? "bg-success"
+                                                    : materia.Semaforo == "parcial" ? "bg-warning text-dark" : "bg-danger";
+                                                <span class="badge @claseSemaforo" title="@materia.Nombre (@materia.UnidadesRevisadas/@materia.TotalUnidades revisadas)">
+                                                    @materia.Abreviatura
+                                                </span>
+                                            }
+                                            <small class="text-muted ms-1">@item.MateriasCompletas/@item.TotalMaterias completas</small>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Sin unidades asignadas</span>
+                                    }
+                                </td>
+                                <td class="text-center" data-label="Pendientes por Revisar">
+                                    @if (item.EntregasPendientes > 0)
+                                    {
+                                        <span class="badge bg-warning text-dark">@item.EntregasPendientes</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">0</span>
+                                    }
                                 </td>
                                 <td class="text-center" data-label="Progreso">
                                     <div class="d-flex align-items-center gap-2 justify-content-center">
@@ -135,11 +212,8 @@
                                         <small class="text-muted">@item.PorcentajeProgreso% (@item.UnidadesCompletadas/@item.TotalUnidadesAsignadas)</small>
                                     </div>
                                 </td>
-                                <td class="text-center" data-label="Promedio">
-                                    @(item.PromedioCalificacion.HasValue ? item.PromedioCalificacion.Value.ToString("F2") : "N/A")
-                                </td>
                                 <td class="text-end" data-label="Acciones">
-                                    <a href="@Url.Action("AspiranteDetalle", new { id = item.Aspirante.AspiranteID })"
+                                    <a href="@Url.Action("AspiranteDetalle", new { id = item.Aspirante.UsuarioID })"
                                        class="btn btn-sm btn-primary" title="Ver detalle">
                                         <i class="fas fa-eye"></i> Ver Detalle
                                     </a>
@@ -171,3 +245,50 @@
         }
     </div>
 </div>
+
+@* ===================== Modal: Carga Masiva de Aspirantes ===================== *@
+<div class="modal fade" id="modalCargaMasiva" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-excel"></i> Carga Masiva de Aspirantes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    Descarga la plantilla, llénala con los datos de cada aspirante (una fila por persona) y
+                    súbela aquí. Las columnas <strong>Carrera 1 / 2 / 3</strong> son un desplegable con tus
+                    carreras a cargo — elige hasta 3. El Área se asigna automáticamente según la primera
+                    carrera de cada fila. No se pide Folio ni Nombre de Usuario: su Folio (y nombre de
+                    usuario) se genera automáticamente, consecutivo al último folio del sistema. Al terminar
+                    la importación podrás descargar un Excel con las credenciales de cada cuenta creada.
+                </p>
+                <a href="@Url.Action("DescargarPlantillaAspirantes", "Coordinador")" class="btn btn-sm btn-outline-secondary mb-3">
+                    <i class="fas fa-download"></i> Descargar Plantilla (Excel)
+                </a>
+                @using (Html.BeginForm("ImportarAspirantesMasivo", "Coordinador", FormMethod.Post, new { enctype = "multipart/form-data", @class = "carga-masiva-form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="mb-0">
+                        <label class="form-label">Archivo (.xlsx)</label>
+                        <input type="file" name="archivo" class="form-control" accept=".xlsx" required />
+                    </div>
+                    <div class="modal-footer px-0 pb-0 mt-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Importar</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $('.carga-masiva-form').on('submit', function () {
+            var $btn = $(this).find('button[type="submit"]');
+            $btn.prop('disabled', true);
+            $btn.html('<i class="fas fa-spinner fa-spin"></i> Importando...');
+        });
+    </script>
+}

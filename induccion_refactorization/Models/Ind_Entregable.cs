@@ -27,9 +27,6 @@ namespace induccion_refactorization.Models
 
         public DateTime? FechaLimite { get; set; }
 
-        [Column(TypeName = "decimal")]
-        public decimal PonderacionMax { get; set; }
-
         public bool Activo { get; set; }
 
         public int Orden { get; set; }

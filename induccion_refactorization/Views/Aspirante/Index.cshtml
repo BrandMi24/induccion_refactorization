@@ -10,9 +10,17 @@
     <div class="course-card" data-course-name="@item.Materia.Nombre.ToLower()">
         <div class="d-flex align-items-start justify-content-between mb-2">
             <h6 class="mb-0"><i class="fas fa-book text-primary"></i> @item.Materia.Nombre</h6>
-            @if (item.PromedioCalificacion.HasValue && item.UnidadesCompletadas > 0)
+            @if (item.TieneAccionRequerida)
             {
-                <span class="badge bg-success">@item.PromedioCalificacion.Value.ToString("F2")</span>
+                <span class="badge bg-danger" title="Un maestro devolvió un entregable en este curso">
+                    <i class="fas fa-exclamation-triangle"></i> Acción requerida
+                </span>
+            }
+            else if (item.TieneFelicitacionPendiente)
+            {
+                <span class="badge bg-success" title="Completaste este curso">
+                    <i class="fas fa-trophy"></i> ¡Curso completado!
+                </span>
             }
         </div>
         <p class="text-muted small mb-3">

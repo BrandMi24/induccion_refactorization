@@ -157,9 +157,9 @@ BEGIN
         AspiranteID          INT NOT NULL,
         UnidadID             INT NOT NULL,
         Estado               NVARCHAR(50) NOT NULL CONSTRAINT DF_IndProgreso_Estado DEFAULT ('Asignado'),
-        Calificacion         DECIMAL(5, 2) NULL,
         FechaAsignacion      DATETIME NOT NULL CONSTRAINT DF_IndProgreso_FechaAsignacion DEFAULT (GETDATE()),
         FechaEnvio           DATETIME NULL,
+        FechaRevision        DATETIME NULL,
         UsuarioCalificadorID INT NULL,
         ComentariosEvaluador NVARCHAR(MAX) NULL,
         CONSTRAINT PK_IndProgresoAspirante PRIMARY KEY CLUSTERED (ProgresoID ASC)
@@ -188,6 +188,30 @@ BEGIN
 END
 GO
 
+-- Bases ya existentes que sí tenían Calificacion: ya no se va a calificar con
+-- número las unidades, solo se marcan como revisadas.
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_ProgresoAspirante') AND name = 'Calificacion')
+BEGIN
+    ALTER TABLE dbo.Ind_ProgresoAspirante DROP COLUMN Calificacion;
+END
+GO
+
+-- El estado "Calificado" ya no existe (se renombró a "Revisado" porque ya no
+-- hay número que asignar, solo aprobar).
+IF EXISTS (SELECT 1 FROM dbo.Ind_ProgresoAspirante WHERE Estado = 'Calificado')
+BEGIN
+    UPDATE dbo.Ind_ProgresoAspirante SET Estado = 'Revisado' WHERE Estado = 'Calificado';
+END
+GO
+
+-- Bases ya existentes que no tenían esta columna: guarda cuándo se aprobó la
+-- unidad (se llena en automático cuando se revisan todos sus entregables).
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_ProgresoAspirante') AND name = 'FechaRevision')
+BEGIN
+    ALTER TABLE dbo.Ind_ProgresoAspirante ADD FechaRevision DATETIME NULL;
+END
+GO
+
 -- 1.6 Ind_Entregables (definición de tareas/archivos a subir) -----------------
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Ind_Entregables')
 BEGIN
@@ -197,7 +221,6 @@ BEGIN
         Titulo         NVARCHAR(255) NOT NULL,
         Instrucciones  NVARCHAR(MAX) NULL,
         FechaLimite    DATETIME NULL,
-        PonderacionMax DECIMAL(5, 2) NOT NULL CONSTRAINT DF_IndEntregables_PonderacionMax DEFAULT (100),
         Activo         BIT NOT NULL CONSTRAINT DF_IndEntregables_Activo DEFAULT (1),
         Orden          INT NOT NULL CONSTRAINT DF_IndEntregables_Orden DEFAULT (0),
         CONSTRAINT PK_IndEntregables PRIMARY KEY CLUSTERED (EntregableID ASC)
@@ -237,6 +260,27 @@ BEGIN
 END
 GO
 
+-- Bases ya existentes que sí tenían PonderacionMax: ya no se va a calificar
+-- con número, así que se quita la columna (primero su default constraint,
+-- luego la columna, en lotes/GO separados).
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_Entregables') AND name = 'PonderacionMax')
+BEGIN
+    DECLARE @ConstraintName NVARCHAR(200) = (
+        SELECT dc.name FROM sys.default_constraints dc
+        INNER JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+        WHERE dc.parent_object_id = OBJECT_ID('dbo.Ind_Entregables') AND c.name = 'PonderacionMax'
+    );
+    IF @ConstraintName IS NOT NULL
+        EXEC('ALTER TABLE dbo.Ind_Entregables DROP CONSTRAINT ' + @ConstraintName);
+END
+GO
+
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_Entregables') AND name = 'PonderacionMax')
+BEGIN
+    ALTER TABLE dbo.Ind_Entregables DROP COLUMN PonderacionMax;
+END
+GO
+
 -- 1.7 Ind_Submisiones (archivos entregados por los aspirantes) ----------------
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Ind_Submisiones')
 BEGIN
@@ -248,7 +292,6 @@ BEGIN
         DocumentoID       INT NULL,
         FechaEnvio        DATETIME NOT NULL CONSTRAINT DF_IndSubmisiones_FechaEnvio DEFAULT (GETDATE()),
         Estado            NVARCHAR(50) NOT NULL CONSTRAINT DF_IndSubmisiones_Estado DEFAULT ('Pendiente'),
-        Calificacion      DECIMAL(5, 2) NULL,
         ComentarioRevisor NVARCHAR(MAX) NULL,
         UsuarioRevisorID  INT NULL,
         FechaRevision     DATETIME NULL,
@@ -283,6 +326,14 @@ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Submisiones_Docum
 BEGIN
     ALTER TABLE dbo.Ind_Submisiones WITH CHECK ADD CONSTRAINT FK_Submisiones_Documentos
         FOREIGN KEY (DocumentoID) REFERENCES dbo.Documentos (DocumentoID);
+END
+GO
+
+-- Bases ya existentes que sí tenían Calificacion: ya no se va a calificar con
+-- número las entregas, solo aprobar ("Revisado") o devolver ("Rechazado").
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_Submisiones') AND name = 'Calificacion')
+BEGIN
+    ALTER TABLE dbo.Ind_Submisiones DROP COLUMN Calificacion;
 END
 GO
 
@@ -321,6 +372,15 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Roles') AND name = 'Activo')
 BEGIN
     ALTER TABLE dbo.Roles ADD Activo BIT NOT NULL CONSTRAINT DF_Roles_Activo DEFAULT (1);
+END
+GO
+
+-- 1.10b Carreras.Activo ----------------------------------------------------------
+-- Permite "desactivar" una carrera (deja de ofrecerse para asignar a usuarios o
+-- materias nuevas) sin borrarla ni romper el historial de quien ya la tiene.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Carreras') AND name = 'Activo')
+BEGIN
+    ALTER TABLE dbo.Carreras ADD Activo BIT NOT NULL CONSTRAINT DF_Carreras_Activo DEFAULT (1);
 END
 GO
 
@@ -380,12 +440,12 @@ INSERT INTO dbo.Ind_Permisos (Clave, Nombre, Descripcion)
 SELECT v.Clave, v.Nombre, v.Descripcion
 FROM (VALUES
     ('GestionContenido',   'Gestión de Contenido',         'Materias, unidades, materiales y entregables.'),
+    ('GestionCarreras',    'Gestión de Carreras',          'Alta, edición y activación/desactivación de carreras.'),
     ('GestionUsuarios',    'Gestión de Usuarios',          'Alta, edición y activación/desactivación de usuarios.'),
     ('GestionPeriodos',    'Gestión de Periodos',          'Alta, edición y activación/desactivación de periodos.'),
     ('GestionRoles',       'Gestión de Roles y Permisos',  'Crear roles y definir sus permisos por sección.'),
     ('Reportes',           'Reportes',                     'Reportes con filtros por carrera, periodo y calificador.'),
-    ('RevisarEntregables', 'Revisar Entregables',          'Revisar y calificar archivos subidos por los aspirantes.'),
-    ('RevisarUnidades',    'Revisar Unidades',             'Revisar y calificar unidades marcadas como entregadas.'),
+    ('RevisarEntregables', 'Revisar Entregables',          'Revisar archivos subidos por los aspirantes (aprobar o devolver).'),
     ('MisAspirantes',      'Mis Aspirantes',               'Ver y asignar/reasignar unidades a los aspirantes.'),
     ('MisMaestros',        'Mis Maestros',                 'Ver los Maestros de la carrera y su actividad.'),
     ('MiEspacio',          'Mi Espacio',                   'Ver cursos, progreso y marcar unidades como entregadas.'),
@@ -404,6 +464,7 @@ SELECT v.RolID, p.PermisoID, v.Leer, v.Crear, v.Editar, v.Eliminar
 FROM (VALUES
     -- Administrador: control total sobre sus secciones.
     (1, 'GestionContenido',   1, 1, 1, 1),
+    (1, 'GestionCarreras',    1, 1, 1, 1),
     (1, 'GestionUsuarios',    1, 1, 1, 1),
     (1, 'GestionPeriodos',    1, 1, 1, 1),
     (1, 'GestionRoles',       1, 1, 1, 1),
@@ -412,13 +473,11 @@ FROM (VALUES
     -- último exclusivo de Coordinador, no de Maestro).
     (3, 'GestionContenido',   1, 1, 1, 1),
     (3, 'RevisarEntregables', 1, 1, 1, 1),
-    (3, 'RevisarUnidades',    1, 1, 1, 1),
     (3, 'MisAspirantes',      1, 1, 1, 1),
     (3, 'MisMaestros',        1, 0, 0, 0),
     -- Maestro: igual que Coordinador pero sin "Mis Maestros".
     (5, 'GestionContenido',   1, 1, 1, 1),
     (5, 'RevisarEntregables', 1, 1, 1, 1),
-    (5, 'RevisarUnidades',    1, 1, 1, 1),
     (5, 'MisAspirantes',      1, 1, 1, 1),
     -- Aspirante: su propio espacio y subir entregables.
     (4, 'MiEspacio',          1, 0, 1, 0),
@@ -428,6 +487,105 @@ INNER JOIN dbo.Ind_Permisos p ON p.Clave = v.Clave
 WHERE NOT EXISTS (
     SELECT 1 FROM dbo.Ind_RolPermisos rp WHERE rp.RolID = v.RolID AND rp.PermisoID = p.PermisoID
 );
+GO
+
+-- 1.16 Limpieza de "RevisarUnidades": ya no existe (ahora solo se revisan
+-- entregas; las unidades sin entregable se marcan como revisadas desde el
+-- detalle de "Mis Aspirantes", bajo el permiso MisAspirantes). Se quita el
+-- catálogo y sus asignaciones si quedaron de una instalación anterior.
+IF EXISTS (SELECT 1 FROM dbo.Ind_Permisos WHERE Clave = 'RevisarUnidades')
+BEGIN
+    DECLARE @PermisoRevisarUnidadesID INT = (SELECT PermisoID FROM dbo.Ind_Permisos WHERE Clave = 'RevisarUnidades');
+    DELETE FROM dbo.Ind_UsuarioPermisos WHERE PermisoID = @PermisoRevisarUnidadesID;
+    DELETE FROM dbo.Ind_RolPermisos WHERE PermisoID = @PermisoRevisarUnidadesID;
+    DELETE FROM dbo.Ind_Permisos WHERE PermisoID = @PermisoRevisarUnidadesID;
+END
+GO
+
+-- 1.17 Ind_Areas (catálogo propio del módulo de inducción, NO el dbo.Areas de
+-- captación) — es el catálogo "padre": cada Carrera pertenece a un Área (no al
+-- revés), gestionado por Admin desde Gestión de Carreras. Se usa para
+-- autoasignar el Área de los aspirantes creados por la carga masiva (Fase 7).
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Ind_Areas')
+BEGIN
+    CREATE TABLE dbo.Ind_Areas (
+        AreaID INT IDENTITY(1,1) NOT NULL,
+        Nombre NVARCHAR(150) NOT NULL,
+        Activo BIT NOT NULL CONSTRAINT DF_IndAreas_Activo DEFAULT (1),
+        CONSTRAINT PK_IndAreas PRIMARY KEY CLUSTERED (AreaID ASC)
+    );
+END
+GO
+
+-- 1.18 Usuarios.Ind_AreaID -------------------------------------------------------
+-- Nullable: solo se usa para usuarios con rol Aspirante creados por la carga
+-- masiva (Fase 7); el resto de usuarios la deja en NULL.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Usuarios') AND name = 'Ind_AreaID')
+BEGIN
+    ALTER TABLE dbo.Usuarios ADD Ind_AreaID INT NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Usuarios_IndAreas')
+BEGIN
+    ALTER TABLE dbo.Usuarios ADD CONSTRAINT FK_Usuarios_IndAreas FOREIGN KEY (Ind_AreaID) REFERENCES dbo.Ind_Areas (AreaID);
+END
+GO
+
+-- 1.20 Carreras.AreaID -----------------------------------------------------------
+-- Cada carrera pertenece a un Área (nullable: las carreras existentes de antes
+-- de este cambio, o recién creadas antes de asignarles una, quedan en NULL
+-- hasta que un Admin la edite; el código bloquea crear carreras nuevas sin
+-- Área si ya no queda ninguna Área en el sistema).
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Carreras') AND name = 'AreaID')
+BEGIN
+    ALTER TABLE dbo.Carreras ADD AreaID INT NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Carreras_IndAreas')
+BEGIN
+    ALTER TABLE dbo.Carreras ADD CONSTRAINT FK_Carreras_IndAreas FOREIGN KEY (AreaID) REFERENCES dbo.Ind_Areas (AreaID);
+END
+GO
+
+-- 1.21 Migración: si Ind_Areas todavía tiene la columna CarreraID de una
+-- instalación anterior a este cambio (Área dependía de Carrera), se migran
+-- esos datos a Carreras.AreaID (la carrera toma la primera Área que tenía) y
+-- se quita la columna vieja, invirtiendo la relación definitivamente.
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_Areas') AND name = 'CarreraID')
+BEGIN
+    UPDATE c
+    SET c.AreaID = (SELECT MIN(a.AreaID) FROM dbo.Ind_Areas a WHERE a.CarreraID = c.CarreraID)
+    FROM dbo.Carreras c
+    WHERE c.AreaID IS NULL
+      AND EXISTS (SELECT 1 FROM dbo.Ind_Areas a WHERE a.CarreraID = c.CarreraID);
+END
+GO
+
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_Areas') AND name = 'CarreraID')
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_IndAreas_Carreras')
+    BEGIN
+        ALTER TABLE dbo.Ind_Areas DROP CONSTRAINT FK_IndAreas_Carreras;
+    END
+END
+GO
+
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Ind_Areas') AND name = 'CarreraID')
+BEGIN
+    ALTER TABLE dbo.Ind_Areas DROP COLUMN CarreraID;
+END
+GO
+
+-- 1.22 Habilitar "Crear" en MisMaestros para Coordinador ------------------------
+-- Antes "Mis Maestros" era de solo lectura; ahora también permite la carga
+-- masiva de maestros (Fase 7), que requiere el permiso Crear.
+UPDATE dbo.Ind_RolPermisos
+SET PuedeCrear = 1
+WHERE RolID = 3
+  AND PermisoID = (SELECT PermisoID FROM dbo.Ind_Permisos WHERE Clave = 'MisMaestros')
+  AND PuedeCrear = 0;
 GO
 
 PRINT 'PARTE 1 completa: esquema del módulo de inducción listo.';
@@ -588,8 +746,8 @@ INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL, Orden) V
 INSERT INTO dbo.Ind_Materiales (UnidadID, Nombre, TipoRecurso, RutaURL, Orden) VALUES (@UnidadID4, 'Manual de Álgebra Básica', 'PDF', 'https://www.uttn.edu.mx/docs/algebra.pdf', 1);
 
 -- Un entregable de ejemplo en la primera unidad, para poder probar el flujo de subida
-INSERT INTO dbo.Ind_Entregables (UnidadID, Titulo, Instrucciones, FechaLimite, PonderacionMax, Activo, Orden)
-VALUES (@UnidadID1, 'Prueba de Entregable', 'Sube cualquier documento en PDF como prueba del flujo de entrega.', DATEADD(DAY, 14, GETDATE()), 100, 1, 1);
+INSERT INTO dbo.Ind_Entregables (UnidadID, Titulo, Instrucciones, FechaLimite, Activo, Orden)
+VALUES (@UnidadID1, 'Prueba de Entregable', 'Sube cualquier documento en PDF como prueba del flujo de entrega.', DATEADD(DAY, 14, GETDATE()), 1, 1);
 
 -- 2.4 Progreso de ejemplo para el aspirante de pruebas -------------------------
 IF @TargetAspiranteID IS NOT NULL
@@ -603,11 +761,11 @@ BEGIN
     (@TargetAspiranteID, @UnidadID5, 'Asignado', GETDATE());
 
     UPDATE dbo.Ind_ProgresoAspirante
-    SET Estado = 'Calificado', Calificacion = 95.00, FechaEnvio = GETDATE(), ComentariosEvaluador = 'Excelente trabajo inicial.', UsuarioCalificadorID = @UsuarioCoordinadorID
+    SET Estado = 'Revisado', FechaEnvio = GETDATE(), ComentariosEvaluador = 'Excelente trabajo inicial.', UsuarioCalificadorID = @UsuarioCoordinadorID
     WHERE AspiranteID = @TargetAspiranteID AND UnidadID = @UnidadID1;
 
     UPDATE dbo.Ind_ProgresoAspirante
-    SET Estado = 'Calificado', Calificacion = 88.00, FechaEnvio = GETDATE(), ComentariosEvaluador = 'Buen desempeño en la evaluación.', UsuarioCalificadorID = @UsuarioCoordinadorID
+    SET Estado = 'Revisado', FechaEnvio = GETDATE(), ComentariosEvaluador = 'Buen desempeño en la evaluación.', UsuarioCalificadorID = @UsuarioCoordinadorID
     WHERE AspiranteID = @TargetAspiranteID AND UnidadID = @UnidadID2;
 
     PRINT 'Materias, unidades, materiales y progreso de ejemplo cargados.';

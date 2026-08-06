@@ -1,18 +1,64 @@
 @model induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.ViewModels.MaestroResumenViewModel>
 @{
     ViewBag.Title = "Mis Maestros";
+    bool puedeCrear = ViewBag.PuedeCrear;
 }
 
-<div class="mb-4">
-    <a href="@Url.Action("Index", "Coordinador")" class="btn btn-link ps-0">
-        <i class="fas fa-arrow-left"></i> Volver al Panel
-    </a>
-    <h2 class="mb-1"><i class="fas fa-chalkboard-teacher text-primary"></i> Mis Maestros</h2>
-    <p class="text-muted mb-0">Maestros asignados a tu(s) carrera(s) y su actividad.</p>
+@{
+    var importCreados = TempData["ImportCreados"] as List<string>;
+    var importErrores = TempData["ImportErrores"] as List<string>;
+    bool credencialesListas = TempData["CredencialesListas"] as bool? ?? false;
+}
+
+<div class="mb-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+        <a href="@Url.Action("Index", "Coordinador")" class="btn btn-link ps-0">
+            <i class="fas fa-arrow-left"></i> Volver al Panel
+        </a>
+        <h2 class="mb-1"><i class="fas fa-chalkboard-teacher text-primary"></i> Mis Maestros</h2>
+        <p class="text-muted mb-0">Maestros asignados a tu(s) carrera(s) y su actividad.</p>
+    </div>
+    @if (puedeCrear)
+    {
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCargaMasiva">
+            <i class="fas fa-file-excel"></i> Carga Masiva
+        </button>
+    }
 </div>
 
+@if (importCreados != null && importCreados.Any())
+{
+    <div class="alert alert-success">
+        <strong><i class="fas fa-check-circle"></i> Maestros creados (@importCreados.Count):</strong>
+        <ul class="mb-0 mt-2 small">
+            @foreach (var linea in importCreados)
+            {
+                <li>@linea</li>
+            }
+        </ul>
+        @if (credencialesListas)
+        {
+            <a href="@Url.Action("DescargarCredencialesGeneradas", "Coordinador")" class="btn btn-sm btn-success mt-2">
+                <i class="fas fa-file-excel"></i> Descargar Credenciales (Excel)
+            </a>
+        }
+    </div>
+}
+@if (importErrores != null && importErrores.Any())
+{
+    <div class="alert alert-warning">
+        <strong><i class="fas fa-exclamation-triangle"></i> Filas con errores (@importErrores.Count):</strong>
+        <ul class="mb-0 mt-2 small">
+            @foreach (var linea in importErrores)
+            {
+                <li>@linea</li>
+            }
+        </ul>
+    </div>
+}
+
 <div class="row mb-4 g-3">
-    <div class="col-md-3 col-sm-6">
+    <div class="col-md-4 col-sm-6">
         <div class="stat-card">
             <div class="icon-badge icon-badge-primary"><i class="fas fa-chalkboard-teacher"></i></div>
             <div>
@@ -21,7 +67,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3 col-sm-6">
+    <div class="col-md-4 col-sm-6">
         <div class="stat-card">
             <div class="icon-badge icon-badge-info"><i class="fas fa-book"></i></div>
             <div>
@@ -30,21 +76,12 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="stat-card">
-            <div class="icon-badge icon-badge-success"><i class="fas fa-list-check"></i></div>
-            <div>
-                <div class="stat-card-value">@ViewBag.TotalUnidadesCalificadas</div>
-                <div class="stat-card-label">Unidades Calificadas</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
+    <div class="col-md-4 col-sm-6">
         <div class="stat-card">
             <div class="icon-badge icon-badge-warning"><i class="fas fa-clipboard-check"></i></div>
             <div>
                 <div class="stat-card-value">@ViewBag.TotalEntregasCalificadas</div>
-                <div class="stat-card-label">Entregas Calificadas</div>
+                <div class="stat-card-label">Entregas Revisadas</div>
             </div>
         </div>
     </div>
@@ -105,14 +142,7 @@
                             <th class="text-center">
                                 @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
                                 {
-                                    Label = "Unidades Calificadas", SortField = "Unidades", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
-                                    Action = "MisMaestros", Controller = "Coordinador", RouteValues = sortRouteValues
-                                })
-                            </th>
-                            <th class="text-center">
-                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
-                                {
-                                    Label = "Entregas Calificadas", SortField = "Entregas", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Label = "Entregas Revisadas", SortField = "Entregas", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
                                     Action = "MisMaestros", Controller = "Coordinador", RouteValues = sortRouteValues
                                 })
                             </th>
@@ -137,8 +167,7 @@
                                 <td class="text-center" data-label="Materias Compartidas">
                                     <span class="badge bg-info">@item.TotalMateriasCompartidas</span>
                                 </td>
-                                <td class="text-center" data-label="Unidades Calificadas">@item.UnidadesCalificadasPorEl</td>
-                                <td class="text-center" data-label="Entregas Calificadas">@item.EntregasCalificadasPorEl</td>
+                                <td class="text-center" data-label="Entregas Revisadas">@item.EntregasCalificadasPorEl</td>
                                 <td class="text-end" data-label="Acciones">
                                     <a href="@Url.Action("MaestroDetalle", new { id = item.Usuario.UsuarioID })"
                                        class="btn btn-sm btn-primary" title="Ver reporte detallado">
@@ -172,3 +201,48 @@
         }
     </div>
 </div>
+
+@* ===================== Modal: Carga Masiva de Maestros ===================== *@
+<div class="modal fade" id="modalCargaMasiva" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-excel"></i> Carga Masiva de Maestros</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    Descarga la plantilla, llénala con los datos de cada maestro (una fila por persona) y súbela
+                    aquí. Las columnas <strong>Carrera 1 / 2 / 3</strong> son un desplegable con tus carreras a
+                    cargo — elige hasta 3. No se pide Nombre de Usuario: se genera automáticamente. Al terminar
+                    la importación podrás descargar un Excel con las credenciales de cada cuenta creada.
+                </p>
+                <a href="@Url.Action("DescargarPlantillaMaestros", "Coordinador")" class="btn btn-sm btn-outline-secondary mb-3">
+                    <i class="fas fa-download"></i> Descargar Plantilla (Excel)
+                </a>
+                @using (Html.BeginForm("ImportarMaestrosMasivo", "Coordinador", FormMethod.Post, new { enctype = "multipart/form-data", @class = "carga-masiva-form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="mb-0">
+                        <label class="form-label">Archivo (.xlsx)</label>
+                        <input type="file" name="archivo" class="form-control" accept=".xlsx" required />
+                    </div>
+                    <div class="modal-footer px-0 pb-0 mt-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Importar</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $('.carga-masiva-form').on('submit', function () {
+            var $btn = $(this).find('button[type="submit"]');
+            $btn.prop('disabled', true);
+            $btn.html('<i class="fas fa-spinner fa-spin"></i> Importando...');
+        });
+    </script>
+}

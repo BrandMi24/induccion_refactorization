@@ -53,6 +53,7 @@ C:\dev\induccion_refactorization\induccion_refactorization\bin\roslyn\VBCSCompil
 C:\dev\induccion_refactorization\induccion_refactorization\bin\Antlr3.Runtime.dll
 C:\dev\induccion_refactorization\induccion_refactorization\bin\EntityFramework.dll
 C:\dev\induccion_refactorization\induccion_refactorization\bin\EntityFramework.SqlServer.dll
+C:\dev\induccion_refactorization\induccion_refactorization\bin\EPPlus.dll
 C:\dev\induccion_refactorization\induccion_refactorization\bin\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll
 C:\dev\induccion_refactorization\induccion_refactorization\bin\Microsoft.Web.Infrastructure.dll
 C:\dev\induccion_refactorization\induccion_refactorization\bin\Newtonsoft.Json.dll

@@ -3,6 +3,9 @@
     ViewBag.Title = "Gestión de Contenido de Inducción";
     var puedeElegirTodas = (bool)ViewBag.PuedeElegirTodasLasCarreras;
     var carrerasList = (List<induccion_refactorization.Models.Carrera>)ViewBag.CarrerasList;
+    bool puedeCrear = ViewBag.PuedeCrear;
+    bool puedeEditar = ViewBag.PuedeEditar;
+    bool puedeEliminar = ViewBag.PuedeEliminar;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -10,9 +13,12 @@
         <h2 class="mb-1"><i class="fas fa-book text-primary"></i> Gestión de Contenido de Inducción</h2>
         <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
     </div>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaMateria">
-        <i class="fas fa-plus"></i> Nueva Materia
-    </button>
+    @if (puedeCrear)
+    {
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaMateria">
+            <i class="fas fa-plus"></i> Nueva Materia
+        </button>
+    }
 </div>
 
 <div class="row mb-4 g-3">
@@ -142,7 +148,7 @@
                                     {
                                         foreach (var carrera in materia.Carreras)
                                         {
-                                            <span class="badge bg-info me-1">@carrera.Nombre</span>
+                                            <span class="badge bg-info me-1" title="@carrera.Nombre">@(!string.IsNullOrEmpty(carrera.Nomenclatura) ? carrera.Nomenclatura : carrera.Nombre)</span>
                                         }
                                     }
                                 </td>
@@ -164,24 +170,30 @@
                                        title="Gestionar Unidades">
                                         <i class="fas fa-list"></i> Unidades
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
-                                            title="Editar Materia"
-                                            data-bs-toggle="modal" data-bs-target="#modalEditarMateria"
-                                            data-id="@materia.MateriaID" data-nombre="@materia.Nombre"
-                                            data-descripcion="@materia.Descripcion" data-periodo-id="@materia.PeriodoID"
-                                            data-todas="@materia.TodasLasCarreras.ToString().ToLower()"
-                                            data-carrera-ids="@string.Join(",", materia.Carreras.Select(c => c.CarreraID))">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    @using (Html.BeginForm("DeleteMateria", "InductionMaintenance", new { id = materia.MateriaID }, FormMethod.Post, new { @class = "d-inline" }))
+                                    @if (puedeEditar)
                                     {
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit"
-                                                class="btn btn-sm btn-outline-danger btn-icon"
-                                                title="Desactivar Materia"
-                                                onclick="return confirm('¿Está seguro de desactivar esta materia?');">
-                                            <i class="fas fa-trash"></i>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
+                                                title="Editar Materia"
+                                                data-bs-toggle="modal" data-bs-target="#modalEditarMateria"
+                                                data-id="@materia.MateriaID" data-nombre="@materia.Nombre"
+                                                data-descripcion="@materia.Descripcion" data-periodo-id="@materia.PeriodoID"
+                                                data-todas="@materia.TodasLasCarreras.ToString().ToLower()"
+                                                data-carrera-ids="@string.Join(",", materia.Carreras.Select(c => c.CarreraID))">
+                                            <i class="fas fa-edit"></i>
                                         </button>
+                                    }
+                                    @if (puedeEliminar)
+                                    {
+                                        using (Html.BeginForm("DeleteMateria", "InductionMaintenance", new { id = materia.MateriaID }, FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-danger btn-icon"
+                                                    title="Desactivar Materia"
+                                                    onclick="return confirm('¿Está seguro de desactivar esta materia?');">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
                                     }
                                 </td>
                             </tr>
@@ -206,11 +218,14 @@
                     <i class="fas fa-book"></i>
                 </div>
                 <div class="empty-state-title">No se encontraron materias</div>
-                <p class="mb-0">
-                    <button type="button" class="btn btn-link p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalNuevaMateria">
-                        Crear la primera materia
-                    </button>
-                </p>
+                @if (puedeCrear)
+                {
+                    <p class="mb-0">
+                        <button type="button" class="btn btn-link p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalNuevaMateria">
+                            Crear la primera materia
+                        </button>
+                    </p>
+                }
             </div>
         }
     </div>

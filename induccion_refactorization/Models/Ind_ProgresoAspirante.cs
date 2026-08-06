@@ -18,20 +18,22 @@ namespace induccion_refactorization.Models
         [StringLength(50)]
         public string Estado { get; set; }
 
-        [Column(TypeName = "decimal")]
-        public decimal? Calificacion { get; set; }
-
         public DateTime FechaAsignacion { get; set; }
 
         public DateTime? FechaEnvio { get; set; }
+
+        public DateTime? FechaRevision { get; set; }
 
         public int? UsuarioCalificadorID { get; set; }
 
         public string ComentariosEvaluador { get; set; }
 
         // Navigation Properties
+        // "AspiranteID" en realidad apunta directo a Usuarios.UsuarioID — ya no
+        // existe una tabla Aspirantes aparte; quién es aspirante se determina
+        // por Usuario.RolID.
         [ForeignKey("AspiranteID")]
-        public virtual Aspirante Aspirante { get; set; }
+        public virtual Usuario AspiranteUsuario { get; set; }
 
         [ForeignKey("UnidadID")]
         public virtual Ind_Unidad Ind_Unidad { get; set; }

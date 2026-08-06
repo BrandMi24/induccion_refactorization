@@ -1,6 +1,9 @@
 @model List<induccion_refactorization.Models.Periodo>
 @{
     ViewBag.Title = "Gestión de Periodos";
+    bool puedeCrear = ViewBag.PuedeCrear;
+    bool puedeEditar = ViewBag.PuedeEditar;
+    bool puedeEliminar = ViewBag.PuedeEliminar;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -8,9 +11,12 @@
         <h2 class="mb-1"><i class="fas fa-calendar-alt text-primary"></i> Gestión de Periodos</h2>
         <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
     </div>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoPeriodo">
-        <i class="fas fa-calendar-plus"></i> Nuevo Periodo
-    </button>
+    @if (puedeCrear)
+    {
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoPeriodo">
+            <i class="fas fa-calendar-plus"></i> Nuevo Periodo
+        </button>
+    }
 </div>
 
 <div class="card">
@@ -59,24 +65,30 @@
                                     }
                                 </td>
                                 <td class="text-end" data-label="Acciones">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
-                                            title="Editar Periodo"
-                                            data-bs-toggle="modal" data-bs-target="#modalEditarPeriodo"
-                                            data-id="@periodo.PeriodoID"
-                                            data-fecha-inicio="@periodo.FechaInicio.ToString("yyyy-MM-dd")"
-                                            data-fecha-fin="@periodo.FechaFin.ToString("yyyy-MM-dd")"
-                                            data-activo="@periodo.Activo.ToString().ToLower()">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    @using (Html.BeginForm("TogglePeriodo", "Admin", new { id = periodo.PeriodoID }, FormMethod.Post, new { @class = "d-inline" }))
+                                    @if (puedeEditar)
                                     {
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit"
-                                                class="btn btn-sm btn-icon @(periodo.Activo ? "btn-outline-danger" : "btn-outline-success")"
-                                                title="@(periodo.Activo ? "Desactivar" : "Reactivar")"
-                                                onclick="return confirm('¿Está seguro de @(periodo.Activo ? "desactivar" : "reactivar") este periodo?');">
-                                            <i class="fas @(periodo.Activo ? "fa-toggle-off" : "fa-toggle-on")"></i>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
+                                                title="Editar Periodo"
+                                                data-bs-toggle="modal" data-bs-target="#modalEditarPeriodo"
+                                                data-id="@periodo.PeriodoID"
+                                                data-fecha-inicio="@periodo.FechaInicio.ToString("yyyy-MM-dd")"
+                                                data-fecha-fin="@periodo.FechaFin.ToString("yyyy-MM-dd")"
+                                                data-activo="@periodo.Activo.ToString().ToLower()">
+                                            <i class="fas fa-edit"></i>
                                         </button>
+                                    }
+                                    @if (puedeEliminar)
+                                    {
+                                        using (Html.BeginForm("TogglePeriodo", "Admin", new { id = periodo.PeriodoID }, FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-icon @(periodo.Activo ? "btn-outline-danger" : "btn-outline-success")"
+                                                    title="@(periodo.Activo ? "Desactivar" : "Reactivar")"
+                                                    onclick="return confirm('¿Está seguro de @(periodo.Activo ? "desactivar" : "reactivar") este periodo?');">
+                                                <i class="fas @(periodo.Activo ? "fa-toggle-off" : "fa-toggle-on")"></i>
+                                            </button>
+                                        }
                                     }
                                 </td>
                             </tr>

@@ -4,6 +4,10 @@
     var rolesConCarrera = (int[])ViewBag.RolesConCarrera;
     var carrerasListUsuario = (List<induccion_refactorization.Models.Carrera>)ViewBag.CarrerasList;
     var usuarioIdActual = ViewBag.UsuarioIDActual != null ? (int)ViewBag.UsuarioIDActual : 0;
+    bool puedeCrear = ViewBag.PuedeCrear;
+    bool puedeEditar = ViewBag.PuedeEditar;
+    bool puedeEliminar = ViewBag.PuedeEliminar;
+    bool puedeVerRoles = ViewBag.PuedeVerRoles;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -11,9 +15,20 @@
         <h2 class="mb-1"><i class="fas fa-user-cog text-primary"></i> Gestión de Usuarios</h2>
         <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
     </div>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
-        <i class="fas fa-user-plus"></i> Nuevo Usuario
-    </button>
+    <div class="d-flex gap-2">
+        @if (puedeVerRoles)
+        {
+            <a href="@Url.Action("Permisos", "Admin")" class="btn btn-outline-secondary">
+                <i class="fas fa-shield-alt"></i> Permisos por Rol
+            </a>
+        }
+        @if (puedeCrear)
+        {
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
+                <i class="fas fa-user-plus"></i> Nuevo Usuario
+            </button>
+        }
+    </div>
 </div>
 
 <div class="card mb-3">
@@ -149,35 +164,46 @@
                                     }
                                 </td>
                                 <td class="text-end" data-label="Acciones">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
-                                            title="Editar Usuario"
-                                            data-bs-toggle="modal" data-bs-target="#modalEditarUsuario"
-                                            data-id="@usuario.UsuarioID" data-nombre="@usuario.Nombre"
-                                            data-apellido-paterno="@usuario.ApellidoPaterno" data-apellido-materno="@usuario.ApellidoMaterno"
-                                            data-nombre-usuario="@usuario.NombreUsuario" data-correo="@usuario.CorreoElectronico"
-                                            data-rol-id="@usuario.RolID"
-                                            data-carrera-ids="@string.Join(",", usuario.Carreras.Select(c => c.CarreraID))">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    @if (usuario.UsuarioID != usuarioIdActual)
+                                    @if (puedeEditar)
                                     {
                                         <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
-                                                title="Permisos Individuales"
-                                                data-bs-toggle="modal" data-bs-target="#modalPermisosUsuario"
-                                                data-id="@usuario.UsuarioID" data-nombre="@usuario.NombreCompleto"
-                                                data-rol-id="@usuario.RolID">
-                                            <i class="fas fa-user-lock"></i>
+                                                title="Editar Usuario"
+                                                data-bs-toggle="modal" data-bs-target="#modalEditarUsuario"
+                                                data-id="@usuario.UsuarioID" data-nombre="@usuario.Nombre"
+                                                data-apellido-paterno="@usuario.ApellidoPaterno" data-apellido-materno="@usuario.ApellidoMaterno"
+                                                data-nombre-usuario="@usuario.NombreUsuario" data-correo="@usuario.CorreoElectronico"
+                                                data-rol-id="@usuario.RolID"
+                                                data-carrera-ids="@string.Join(",", usuario.Carreras.Select(c => c.CarreraID))"
+                                                data-nombre-completo="@usuario.NombreCompleto"
+                                                data-es-propia-cuenta="@(usuario.UsuarioID == usuarioIdActual ? "true" : "false")">
+                                            <i class="fas fa-edit"></i>
                                         </button>
                                     }
-                                    @using (Html.BeginForm("ToggleActivoUsuario", "Admin", new { id = usuario.UsuarioID }, FormMethod.Post, new { @class = "d-inline" }))
+                                    @if (puedeEliminar)
                                     {
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit"
-                                                class="btn btn-sm btn-icon @(usuario.Activo ? "btn-outline-danger" : "btn-outline-success")"
-                                                title="@(usuario.Activo ? "Desactivar" : "Reactivar")"
-                                                onclick="return confirm('¿Está seguro de @(usuario.Activo ? "desactivar" : "reactivar") este usuario?');">
-                                            <i class="fas @(usuario.Activo ? "fa-user-slash" : "fa-user-check")"></i>
-                                        </button>
+                                        using (Html.BeginForm("ToggleActivoUsuario", "Admin", new { id = usuario.UsuarioID }, FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-icon @(usuario.Activo ? "btn-outline-danger" : "btn-outline-success")"
+                                                    title="@(usuario.Activo ? "Desactivar" : "Reactivar")"
+                                                    onclick="return confirm('¿Está seguro de @(usuario.Activo ? "desactivar" : "reactivar") este usuario?');">
+                                                <i class="fas @(usuario.Activo ? "fa-user-slash" : "fa-user-check")"></i>
+                                            </button>
+                                        }
+                                    }
+                                    @if (puedeEliminar && usuario.UsuarioID != usuarioIdActual)
+                                    {
+                                        using (Html.BeginForm("DeleteUsuario", "Admin", new { id = usuario.UsuarioID }, FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-icon btn-outline-danger"
+                                                    title="Eliminar permanentemente"
+                                                    onclick="return confirm('¿Está seguro de ELIMINAR PERMANENTEMENTE a @usuario.NombreCompleto? Esta acción no se puede deshacer. Si tiene historial asociado (documentos, calificaciones, etc.), no se podrá eliminar.');">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
                                     }
                                 </td>
                             </tr>
@@ -251,19 +277,23 @@
                         @Html.DropDownList("RolID", (SelectList)ViewBag.RolesList, "-- Seleccione un rol --", new { @class = "form-select", id = "createRolID" })
                     </div>
                     <div class="form-group" id="createCarrerasSection">
-                        <label class="control-label">Carrera(s) asignada(s)</label>
+                        <label class="control-label">Carrera(s) a cargo</label>
+                        <div class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" id="createTodasLasCarrerasUsuario" />
+                            <label class="form-check-label" for="createTodasLasCarrerasUsuario"><strong>Seleccionar todas las carreras</strong></label>
+                        </div>
                         <div class="row g-2 ps-2">
                             @foreach (var carrera in carrerasListUsuario)
                             {
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="carreraIds" value="@carrera.CarreraID" id="createUsuarioCarrera_@carrera.CarreraID" />
+                                        <input type="checkbox" class="form-check-input create-usuario-carrera-checkbox" name="carreraIds" value="@carrera.CarreraID" id="createUsuarioCarrera_@carrera.CarreraID" />
                                         <label class="form-check-label" for="createUsuarioCarrera_@carrera.CarreraID">@carrera.Nombre</label>
                                     </div>
                                 </div>
                             }
                         </div>
-                        <small class="form-text text-muted">Solo aplica para Coordinador, Maestro y Aspirante. Se puede seleccionar más de una.</small>
+                        <small class="form-text text-muted">Solo aplica para Coordinador, Maestro y Aspirante. Se puede seleccionar una, varias, o todas.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -277,62 +307,110 @@
 
 @* ===================== Modal: Editar Usuario ===================== *@
 <div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             @using (Html.BeginForm("EditUsuario", "Admin", FormMethod.Post, new { @class = "usuario-form" }))
             {
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="UsuarioID" id="editUsuarioId" />
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-user-edit"></i> Editar Usuario</h5>
+                    <h5 class="modal-title"><i class="fas fa-user-edit"></i> Editar Usuario — <span id="editUsuarioNombreCompleto"></span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6 form-group mb-3">
-                            <label class="control-label">Nombre</label>
-                            <input type="text" name="Nombre" id="editUsuarioNombre" class="form-control" required />
-                        </div>
-                        <div class="col-md-3 form-group mb-3">
-                            <label class="control-label">Apellido Paterno</label>
-                            <input type="text" name="ApellidoPaterno" id="editUsuarioApellidoPaterno" class="form-control" required />
-                        </div>
-                        <div class="col-md-3 form-group mb-3">
-                            <label class="control-label">Apellido Materno</label>
-                            <input type="text" name="ApellidoMaterno" id="editUsuarioApellidoMaterno" class="form-control" />
-                        </div>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Nombre de Usuario</label>
-                        <input type="text" name="NombreUsuario" id="editUsuarioNombreUsuario" class="form-control" required />
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Correo Electrónico</label>
-                        <input type="email" name="CorreoElectronico" id="editUsuarioCorreo" class="form-control" required />
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Nueva Contraseña</label>
-                        <input type="password" name="Contrasena" class="form-control" placeholder="Dejar en blanco para no cambiar" />
-                        <small class="form-text text-muted">Solo complete este campo si desea cambiar la contraseña.</small>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Rol</label>
-                        @Html.DropDownList("RolID", (SelectList)ViewBag.RolesList, new { @class = "form-select", id = "editRolID" })
-                    </div>
-                    <div class="form-group" id="editCarrerasSection">
-                        <label class="control-label">Carrera(s) asignada(s)</label>
-                        <div class="row g-2 ps-2">
-                            @foreach (var carrera in carrerasListUsuario)
-                            {
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input type="checkbox" class="form-check-input edit-usuario-carrera-checkbox" name="carreraIds" value="@carrera.CarreraID" id="editUsuarioCarrera_@carrera.CarreraID" />
-                                        <label class="form-check-label" for="editUsuarioCarrera_@carrera.CarreraID">@carrera.Nombre</label>
-                                    </div>
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="editUsuarioTabDatosBtn" data-bs-toggle="tab" data-bs-target="#editUsuarioTabDatos" type="button" role="tab">
+                                <i class="fas fa-id-card"></i> Datos Generales
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation" id="editUsuarioTabPermisosItem">
+                            <button class="nav-link" id="editUsuarioTabPermisosBtn" data-bs-toggle="tab" data-bs-target="#editUsuarioTabPermisos" type="button" role="tab">
+                                <i class="fas fa-user-lock"></i> Permisos Individuales
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="editUsuarioTabDatos" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-6 form-group mb-3">
+                                    <label class="control-label">Nombre</label>
+                                    <input type="text" name="Nombre" id="editUsuarioNombre" class="form-control" required />
                                 </div>
-                            }
+                                <div class="col-md-3 form-group mb-3">
+                                    <label class="control-label">Apellido Paterno</label>
+                                    <input type="text" name="ApellidoPaterno" id="editUsuarioApellidoPaterno" class="form-control" required />
+                                </div>
+                                <div class="col-md-3 form-group mb-3">
+                                    <label class="control-label">Apellido Materno</label>
+                                    <input type="text" name="ApellidoMaterno" id="editUsuarioApellidoMaterno" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label class="control-label">Nombre de Usuario</label>
+                                <input type="text" name="NombreUsuario" id="editUsuarioNombreUsuario" class="form-control" required />
+                            </div>
+                            <div class="form-group mb-3">
+                                <label class="control-label">Correo Electrónico</label>
+                                <input type="email" name="CorreoElectronico" id="editUsuarioCorreo" class="form-control" required />
+                            </div>
+                            <div class="form-group mb-3">
+                                <label class="control-label">Nueva Contraseña</label>
+                                <input type="password" name="Contrasena" class="form-control" placeholder="Dejar en blanco para no cambiar" />
+                                <small class="form-text text-muted">Solo complete este campo si desea cambiar la contraseña.</small>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label class="control-label">Rol</label>
+                                @Html.DropDownList("RolID", (SelectList)ViewBag.RolesList, new { @class = "form-select", id = "editRolID" })
+                            </div>
+                            <div class="form-group" id="editCarrerasSection">
+                                <label class="control-label">Carrera(s) a cargo</label>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="editTodasLasCarrerasUsuario" />
+                                    <label class="form-check-label" for="editTodasLasCarrerasUsuario"><strong>Seleccionar todas las carreras</strong></label>
+                                </div>
+                                <div class="row g-2 ps-2">
+                                    @foreach (var carrera in carrerasListUsuario)
+                                    {
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input edit-usuario-carrera-checkbox" name="carreraIds" value="@carrera.CarreraID" id="editUsuarioCarrera_@carrera.CarreraID" />
+                                                <label class="form-check-label" for="editUsuarioCarrera_@carrera.CarreraID">@carrera.Nombre</label>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                <small class="form-text text-muted">Solo aplica para Coordinador, Maestro y Aspirante. Se puede seleccionar una, varias, o todas las carreras a cargo.</small>
+                            </div>
                         </div>
-                        <small class="form-text text-muted">Solo aplica para Coordinador, Maestro y Aspirante. Se puede seleccionar más de una.</small>
+                        <div class="tab-pane fade" id="editUsuarioTabPermisos" role="tabpanel">
+                            <p class="small text-muted">
+                                Cada casilla ya viene marcada según lo que su rol permite hoy. Si la cambias, esa
+                                sección queda resaltada como una excepción solo para este usuario (por ejemplo, es
+                                Coordinador pero no quieres que él en particular tenga tal permiso) — usa "Quitar
+                                excepciones" al final de la fila para que esa sección vuelva a seguir automáticamente
+                                lo que diga su rol.
+                            </p>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0 permisos-usuario-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="min-width: 160px;">Sección</th>
+                                            <th class="text-center" style="min-width: 80px;">Leer</th>
+                                            <th class="text-center" style="min-width: 80px;">Crear</th>
+                                            <th class="text-center" style="min-width: 80px;">Editar</th>
+                                            <th class="text-center" style="min-width: 80px;">Eliminar</th>
+                                            <th class="text-center" style="min-width: 170px;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="editUsuarioPermisosBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="editUsuarioPermisosSinSecciones" class="small text-muted" style="display: none;">
+                                Todavía no hay secciones en el catálogo de permisos.
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -344,56 +422,18 @@
     </div>
 </div>
 
-@* ===================== Modal: Permisos Individuales ===================== *@
-<div class="modal fade" id="modalPermisosUsuario" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            @using (Html.BeginForm("GuardarPermisosUsuario", "Admin", FormMethod.Post))
-            {
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="usuarioId" id="permisosUsuarioId" />
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-user-lock"></i> Permisos individuales de <span id="permisosUsuarioNombre"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="small text-muted">
-                        "Heredar del rol" usa el permiso que ya tiene su rol asignado. "Permitir" o "Denegar"
-                        crea una excepción solo para este usuario, sin importar lo que diga su rol.
-                    </p>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0 permisos-usuario-table">
-                            <thead>
-                                <tr>
-                                    <th style="min-width: 160px;">Sección</th>
-                                    <th style="min-width: 150px;">Leer</th>
-                                    <th style="min-width: 150px;">Crear</th>
-                                    <th style="min-width: 150px;">Editar</th>
-                                    <th style="min-width: 150px;">Eliminar</th>
-                                </tr>
-                            </thead>
-                            <tbody id="permisosUsuarioBody">
-                            </tbody>
-                        </table>
-                    </div>
-                    <style>
-                        .permisos-usuario-table .permiso-accion-select {
-                            min-width: 130px;
-                            width: 100%;
-                        }
-                    </style>
-                    <div id="permisosUsuarioSinSecciones" class="small text-muted" style="display: none;">
-                        El rol de este usuario no tiene secciones asignadas todavía.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Permisos</button>
-                </div>
-            }
-        </div>
-    </div>
-</div>
+<style>
+    .permisos-usuario-table td.tiene-excepcion {
+        background-color: rgba(255, 193, 7, 0.15);
+    }
+
+    .permisos-usuario-table .permiso-checkbox {
+        float: none;
+        margin: 0;
+        display: inline-block;
+        vertical-align: middle;
+    }
+</style>
 
 @section scripts {
     <script>
@@ -408,70 +448,92 @@
             var rolPermisosTodos = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.RolPermisosTodos));
             var usuarioPermisosOverrides = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.UsuarioPermisosOverrides));
 
-            function opcionesAccion(select, valorActual) {
-                var opciones = [
-                    { valor: '', texto: 'Heredar del rol' },
-                    { valor: 'true', texto: 'Permitir' },
-                    { valor: 'false', texto: 'Denegar' }
-                ];
-                opciones.forEach(function (op) {
-                    var $opt = $('<option></option>').attr('value', op.valor).text(op.texto);
-                    if ((valorActual === null || valorActual === undefined) && op.valor === '') {
-                        $opt.prop('selected', true);
-                    } else if (valorActual === true && op.valor === 'true') {
-                        $opt.prop('selected', true);
-                    } else if (valorActual === false && op.valor === 'false') {
-                        $opt.prop('selected', true);
-                    }
-                    select.append($opt);
+            // Construye una celda con: un checkbox (el valor efectivo: la excepción
+            // del usuario si existe, si no lo que ya tiene el rol por defecto) y un
+            // input oculto que es lo que realmente se manda al servidor ('' = hereda
+            // del rol, 'true'/'false' = excepción explícita de este usuario). El
+            // valor por defecto del rol queda en data-rol-default para que el botón
+            // "Quitar excepciones" de la fila sepa a qué volver.
+            function construirCeldaPermiso($td, nombreCampo, valorRolPorDefecto, valorExcepcion) {
+                var tieneExcepcion = valorExcepcion !== null && valorExcepcion !== undefined;
+                var valorEfectivo = tieneExcepcion ? valorExcepcion : valorRolPorDefecto;
+
+                var $hidden = $('<input type="hidden">')
+                    .attr('name', nombreCampo)
+                    .val(tieneExcepcion ? String(valorExcepcion) : '');
+                var $checkbox = $('<input type="checkbox" class="form-check-input permiso-checkbox">')
+                    .prop('checked', valorEfectivo)
+                    .attr('data-rol-default', valorRolPorDefecto ? 'true' : 'false');
+
+                $td.toggleClass('tiene-excepcion', tieneExcepcion);
+
+                $checkbox.on('change', function () {
+                    $hidden.val(String($checkbox.prop('checked')));
+                    $td.toggleClass('tiene-excepcion', true);
+                    actualizarBotonQuitarExcepciones($td.closest('tr'));
                 });
+
+                $td.append($hidden, $checkbox);
             }
 
+            // Habilita/deshabilita el botón "Quitar excepciones" de una fila según si
+            // esa sección tiene o no alguna excepción marcada en este momento.
+            function actualizarBotonQuitarExcepciones($tr) {
+                var hayExcepcion = $tr.find('td.tiene-excepcion').length > 0;
+                $tr.find('.permiso-quitar-fila').prop('disabled', !hayExcepcion);
+            }
+
+            // Muestra TODAS las secciones del catálogo (igual que Permisos por Rol),
+            // no solo las que ya tengan una fila guardada para este rol — así se ve
+            // completo aunque el rol nunca se haya tocado desde Permisos por Rol.
+            // El valor por defecto de cada acción se toma de lo que ya tiene
+            // predefinido el rol (se muestra en la propia etiqueta "Heredar del
+            // rol"); desde aquí se puede seguir editando por excepción, por usuario.
             function construirPermisosUsuario(usuarioId, rolId) {
-                var $body = $('#permisosUsuarioBody');
+                var $body = $('#editUsuarioPermisosBody');
                 $body.empty();
 
-                var permisosDelRol = rolPermisosTodos.filter(function (rp) { return rp.RolID === rolId; });
                 var overridesDelUsuario = usuarioPermisosOverrides.filter(function (up) { return up.UsuarioID === usuarioId; });
 
-                $('#permisosUsuarioSinSecciones').toggle(permisosDelRol.length === 0);
+                $('#editUsuarioPermisosSinSecciones').toggle(permisosCatalogo.length === 0);
 
                 var idx = 0;
-                permisosDelRol.forEach(function (rp) {
-                    var permiso = permisosCatalogo.filter(function (p) { return p.PermisoID === rp.PermisoID; })[0];
-                    if (!permiso) { return; }
-
-                    var overrideActual = overridesDelUsuario.filter(function (up) { return up.PermisoID === rp.PermisoID; })[0];
+                permisosCatalogo.forEach(function (permiso) {
+                    var permisoRol = rolPermisosTodos.filter(function (rp) { return rp.RolID === rolId && rp.PermisoID === permiso.PermisoID; })[0];
+                    var overrideActual = overridesDelUsuario.filter(function (up) { return up.PermisoID === permiso.PermisoID; })[0];
 
                     var $tr = $('<tr></tr>');
                     $tr.append($('<td></td>').text(permiso.Nombre));
                     $tr.append($('<input type="hidden">').attr('name', 'permisos[' + idx + '].PermisoID').val(permiso.PermisoID));
 
                     ['Leer', 'Crear', 'Editar', 'Eliminar'].forEach(function (accion) {
-                        var $td = $('<td></td>');
-                        var $select = $('<select class="form-select form-select-sm permiso-accion-select"></select>')
-                            .attr('name', 'permisos[' + idx + '].' + accion);
-                        var valorActual = overrideActual ? overrideActual['Puede' + accion] : null;
-                        opcionesAccion($select, valorActual);
-                        $td.append($select);
+                        var $td = $('<td class="text-center"></td>');
+                        var valorExcepcion = overrideActual ? overrideActual['Puede' + accion] : null;
+                        var valorRolPorDefecto = permisoRol ? permisoRol['Puede' + accion] : false;
+                        construirCeldaPermiso($td, 'permisos[' + idx + '].' + accion, valorRolPorDefecto, valorExcepcion);
                         $tr.append($td);
                     });
 
+                    var $tdAcciones = $('<td class="text-center"></td>');
+                    var $btnQuitarFila = $('<button type="button" class="btn btn-sm btn-outline-danger btn-icon permiso-quitar-fila" title="Quitar excepciones"><i class="fas fa-undo"></i></button>');
+                    $btnQuitarFila.on('click', function () {
+                        $tr.find('.permiso-checkbox').each(function () {
+                            var $cb = $(this);
+                            var rolDefault = $cb.attr('data-rol-default') === 'true';
+                            $cb.siblings('input[type=hidden]').val('');
+                            $cb.prop('checked', rolDefault);
+                        });
+                        $tr.find('td').removeClass('tiene-excepcion');
+                        actualizarBotonQuitarExcepciones($tr);
+                    });
+                    $tdAcciones.append($btnQuitarFila);
+                    $tr.append($tdAcciones);
+
                     $body.append($tr);
+                    actualizarBotonQuitarExcepciones($tr);
                     idx++;
                 });
             }
-
-            document.getElementById('modalPermisosUsuario').addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget;
-                var usuarioId = parseInt(button.dataset.id, 10);
-                var rolId = parseInt(button.dataset.rolId, 10);
-
-                document.getElementById('permisosUsuarioId').value = usuarioId;
-                document.getElementById('permisosUsuarioNombre').textContent = button.dataset.nombre;
-
-                construirPermisosUsuario(usuarioId, rolId);
-            });
 
             function toggleCarrerasSection(selectSelector, sectionSelector) {
                 var rolId = parseInt($(selectSelector).val(), 10);
@@ -484,22 +546,66 @@
 
             $('#editRolID').on('change', function () { toggleCarrerasSection('#editRolID', '#editCarrerasSection'); });
 
+            // "Seleccionar todas las carreras": marca/desmarca todas las carreras
+            // individuales de un jalón; si el usuario las va marcando una por una
+            // hasta completarlas todas, el checkbox maestro también se marca solo.
+            function setupSeleccionarTodasCarreras(masterId, itemsSelector) {
+                var $master = $('#' + masterId);
+                var $items = $(itemsSelector);
+
+                $master.on('change', function () {
+                    $items.prop('checked', $master.prop('checked'));
+                });
+
+                $items.on('change', function () {
+                    var todasMarcadas = $items.length > 0 && $items.filter(':checked').length === $items.length;
+                    $master.prop('checked', todasMarcadas);
+                });
+            }
+
+            function sincronizarMasterCarreras(masterId, itemsSelector) {
+                var $items = $(itemsSelector);
+                var todasMarcadas = $items.length > 0 && $items.filter(':checked').length === $items.length;
+                $('#' + masterId).prop('checked', todasMarcadas);
+            }
+
+            setupSeleccionarTodasCarreras('createTodasLasCarrerasUsuario', '.create-usuario-carrera-checkbox');
+            setupSeleccionarTodasCarreras('editTodasLasCarrerasUsuario', '.edit-usuario-carrera-checkbox');
+
             document.getElementById('modalEditarUsuario').addEventListener('show.bs.modal', function (event) {
                 var button = event.relatedTarget;
-                document.getElementById('editUsuarioId').value = button.dataset.id;
+                var usuarioId = parseInt(button.dataset.id, 10);
+                var rolId = parseInt(button.dataset.rolId, 10);
+                var esPropiaCuenta = button.dataset.esPropiaCuenta === 'true';
+
+                document.getElementById('editUsuarioId').value = usuarioId;
                 document.getElementById('editUsuarioNombre').value = button.dataset.nombre;
                 document.getElementById('editUsuarioApellidoPaterno').value = button.dataset.apellidoPaterno;
                 document.getElementById('editUsuarioApellidoMaterno').value = button.dataset.apellidoMaterno;
                 document.getElementById('editUsuarioNombreUsuario').value = button.dataset.nombreUsuario;
                 document.getElementById('editUsuarioCorreo').value = button.dataset.correo;
+                document.getElementById('editUsuarioNombreCompleto').textContent = button.dataset.nombreCompleto || '';
                 $('#editRolID').val(button.dataset.rolId);
 
                 var selectedIds = (button.dataset.carreraIds || '').split(',').filter(function (v) { return v !== ''; });
                 $('.edit-usuario-carrera-checkbox').each(function () {
                     $(this).prop('checked', selectedIds.indexOf(this.value) !== -1);
                 });
+                sincronizarMasterCarreras('editTodasLasCarrerasUsuario', '.edit-usuario-carrera-checkbox');
 
                 toggleCarrerasSection('#editRolID', '#editCarrerasSection');
+
+                // Un Admin no puede editarse sus propios permisos individuales
+                // (para no bloquearse a sí mismo por accidente), así que esa
+                // pestaña se oculta cuando el usuario editado es su propia cuenta.
+                $('#editUsuarioTabPermisosItem').toggle(!esPropiaCuenta);
+                if (!esPropiaCuenta) {
+                    construirPermisosUsuario(usuarioId, rolId);
+                }
+
+                // Siempre abrir en la pestaña de Datos Generales, sin importar en
+                // cuál se haya quedado la última vez que se abrió este modal.
+                bootstrap.Tab.getOrCreateInstance(document.getElementById('editUsuarioTabDatosBtn')).show();
             });
 
             $('.usuario-form').on('submit', function() {

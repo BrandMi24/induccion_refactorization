@@ -11,24 +11,11 @@
     <div class="col-md-5">
         <div class="action-card">
             <div class="icon-badge icon-badge-lg icon-badge-primary">
-                <i class="fas fa-book"></i>
+                <i class="fas fa-graduation-cap"></i>
             </div>
-            <h5 class="action-card-title">Gestión de Materias</h5>
-            <p class="action-card-text">Crear y editar materias de inducción, unidades y entregables.</p>
-            <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-primary">
-                Ir a Gestión <i class="fas fa-arrow-right ms-1"></i>
-            </a>
-        </div>
-    </div>
-
-    <div class="col-md-5">
-        <div class="action-card">
-            <div class="icon-badge icon-badge-lg icon-badge-success">
-                <i class="fas fa-user-cog"></i>
-            </div>
-            <h5 class="action-card-title">Gestión de Usuarios</h5>
-            <p class="action-card-text">Administrar cuentas, roles y estado de acceso del sistema.</p>
-            <a href="@Url.Action("GestionUsuarios", "Admin")" class="btn btn-success">
+            <h5 class="action-card-title">Gestión de Carreras</h5>
+            <p class="action-card-text">Crear, editar y activar/desactivar las carreras del sistema.</p>
+            <a href="@Url.Action("GestionCarreras", "Admin")" class="btn btn-primary">
                 Ir a Gestión <i class="fas fa-arrow-right ms-1"></i>
             </a>
         </div>
@@ -49,13 +36,13 @@
 
     <div class="col-md-5">
         <div class="action-card">
-            <div class="icon-badge icon-badge-lg icon-badge-warning">
-                <i class="fas fa-shield-alt"></i>
+            <div class="icon-badge icon-badge-lg icon-badge-success">
+                <i class="fas fa-user-cog"></i>
             </div>
-            <h5 class="action-card-title">Permisos por Rol</h5>
-            <p class="action-card-text">Consulta qué puede hacer cada rol dentro del sistema.</p>
-            <a href="@Url.Action("Permisos", "Admin")" class="btn btn-warning">
-                Ver Permisos <i class="fas fa-arrow-right ms-1"></i>
+            <h5 class="action-card-title">Gestión de Usuarios</h5>
+            <p class="action-card-text">Administrar cuentas, roles, carreras a cargo y permisos individuales.</p>
+            <a href="@Url.Action("GestionUsuarios", "Admin")" class="btn btn-success">
+                Ir a Gestión <i class="fas fa-arrow-right ms-1"></i>
             </a>
         </div>
     </div>

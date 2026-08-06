@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Web;
 using induccion_refactorization.Models;
 
@@ -11,22 +10,20 @@ namespace induccion_refactorization.Helpers
     /// </summary>
     public static class SessionHelper
     {
-        public static void PopulateSession(HttpSessionStateBase session, Usuario user, CaptacionDbContext db)
+        public static void PopulateSession(HttpSessionStateBase session, Usuario user)
         {
             session["UsuarioID"] = user.UsuarioID;
             session["RolID"] = user.RolID;
             session["NombreCompleto"] = user.NombreCompleto;
             session["Email"] = user.CorreoElectronico;
 
+            // Ya no existe una tabla Aspirantes aparte: quién es aspirante se
+            // determina por RolID, y "AspiranteID" es directamente su UsuarioID.
+            // El Folio es el mismo NombreUsuario (ver Fase 10).
             if (user.RolID == 4)
             {
-                var aspirante = db.Aspirantes.FirstOrDefault(a => a.UsuarioID == user.UsuarioID);
-                if (aspirante != null)
-                {
-                    session["AspiranteID"] = aspirante.AspiranteID;
-                    session["Matricula"] = aspirante.Matricula;
-                    session["Folio"] = aspirante.Folio;
-                }
+                session["AspiranteID"] = user.UsuarioID;
+                session["Folio"] = user.NombreUsuario;
             }
         }
     }

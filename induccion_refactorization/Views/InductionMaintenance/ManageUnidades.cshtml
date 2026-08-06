@@ -1,15 +1,34 @@
 @model IEnumerable<induccion_refactorization.Models.Ind_Unidad>
 @{
     ViewBag.Title = "Gestionar Unidades";
-    var rolIdSesion = Session["RolID"] != null ? (int)Session["RolID"] : 0;
     var unidades = (Model ?? new List<induccion_refactorization.Models.Ind_Unidad>()).OrderBy(u => u.Orden).ToList();
     var materiaId = (int)(ViewBag.MateriaID ?? 0);
-    bool sinUnidades = !unidades.Any();
-    bool puedeAsignar = rolIdSesion == 1 || rolIdSesion == 3 || rolIdSesion == 5;
+    bool puedeAsignar = ViewBag.PuedeAsignar;
+    bool puedeEditarContenido = ViewBag.PuedeEditar;
     var tiposRecurso = new List<string> { "PDF", "Video", "Enlace", "Documento" };
+
+    var estadoInicial = unidades.Select(u => new
+    {
+        id = u.UnidadID,
+        nombre = u.Nombre,
+        materiales = (u.Ind_Materiales ?? new List<induccion_refactorization.Models.Ind_Material>()).OrderBy(m => m.Orden).Select(m => new
+        {
+            id = m.MaterialID,
+            nombre = m.Nombre,
+            tipoRecurso = m.TipoRecurso,
+            rutaURL = m.RutaURL
+        }),
+        entregables = (u.Ind_Entregables ?? new List<induccion_refactorization.Models.Ind_Entregable>()).Where(e => e.Activo).OrderBy(e => e.Orden).Select(e => new
+        {
+            id = e.EntregableID,
+            titulo = e.Titulo,
+            instrucciones = e.Instrucciones,
+            fechaLimite = e.FechaLimite.HasValue ? e.FechaLimite.Value.ToString("yyyy-MM-dd") : null
+        })
+    });
 }
 
-<div class="mt-4">
+<div class="mt-4 pb-5">
     <div class="row mb-4">
         <div class="col-md-12">
             <a href="@Url.Action("Index", "InductionMaintenance")" class="btn btn-outline-secondary btn-sm">
@@ -26,303 +45,176 @@
                     <p class="text-muted mb-0">Materia: <strong>@ViewBag.MateriaNombre</strong></p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#modalAgregarMaterial" @Html.Raw(sinUnidades ? "disabled" : "")>
-                        <i class="fas fa-file"></i> Agregar Material
-                    </button>
-                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalAgregarEntregable" @Html.Raw(sinUnidades ? "disabled" : "")>
-                        <i class="fas fa-file-upload"></i> Agregar Entregable
-                    </button>
+                    @if (puedeEditarContenido)
+                    {
+                        <button type="button" class="btn btn-info" id="btnAgregarMaterialTop">
+                            <i class="fas fa-file"></i> Agregar Material
+                        </button>
+                        <button type="button" class="btn btn-warning" id="btnAgregarEntregableTop">
+                            <i class="fas fa-file-upload"></i> Agregar Entregable
+                        </button>
+                    }
                     @if (puedeAsignar)
                     {
-                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAsignar" @Html.Raw(sinUnidades ? "disabled" : "")>
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAsignar" id="btnAsignar">
                             <i class="fas fa-user-check"></i> Asignar
                         </button>
                     }
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaUnidad">
-                        <i class="fas fa-plus"></i> Nueva Unidad
-                    </button>
+                    @if (puedeEditarContenido)
+                    {
+                        <button type="button" class="btn btn-primary" id="btnNuevaUnidad">
+                            <i class="fas fa-plus"></i> Nueva Unidad
+                        </button>
+                    }
                 </div>
             </div>
-        </div>
-    </div>
-
-    @if (!sinUnidades)
-    {
-        <div class="accordion" id="accordionUnidades">
-            @foreach (var unidad in unidades)
+            @if (puedeEditarContenido)
             {
-                var materiales = (unidad.Ind_Materiales ?? new List<induccion_refactorization.Models.Ind_Material>()).OrderBy(m => m.Orden).ToList();
-                var entregablesActivos = (unidad.Ind_Entregables ?? new List<induccion_refactorization.Models.Ind_Entregable>()).Where(e => e.Activo).OrderBy(e => e.Orden).ToList();
-
-                <div class="accordion-item" data-unidad-id="@unidad.UnidadID">
-                    <h2 class="accordion-header d-flex align-items-stretch">
-                        @if (unidades.Count > 1)
-                        {
-                            <span class="drag-handle-unidad d-flex align-items-center px-2 text-muted" style="cursor: grab;" title="Arrastrar para reordenar">
-                                <i class="fas fa-grip-vertical"></i>
-                            </span>
-                        }
-                        <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#unidad-@unidad.UnidadID">
-                            <i class="fas fa-list-ol me-2"></i> Unidad @unidad.Orden: @unidad.Nombre
-                        </button>
-                    </h2>
-                    <div id="unidad-@unidad.UnidadID" class="accordion-collapse collapse" data-bs-parent="#accordionUnidades">
-                        <div class="accordion-body">
-                            <div class="d-flex justify-content-end gap-2 mb-3">
-                                <button type="button" class="btn btn-sm btn-secondary"
-                                        data-bs-toggle="modal" data-bs-target="#modalEditarUnidad"
-                                        data-id="@unidad.UnidadID" data-nombre="@unidad.Nombre">
-                                    <i class="fas fa-pen"></i> Editar
-                                </button>
-                                @using (Html.BeginForm("DeleteUnidad", "InductionMaintenance", new { id = unidad.UnidadID }, FormMethod.Post, new { @class = "d-inline" }))
-                                {
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-danger"
-                                            onclick="return confirm('¿Eliminar esta unidad y todos sus materiales?');">
-                                        <i class="fas fa-trash"></i> Eliminar
-                                    </button>
-                                }
-                            </div>
-
-                            <h6><i class="fas fa-file"></i> Materiales</h6>
-                            @if (materiales.Any())
-                            {
-                                <ul class="list-group sortable-materiales mb-3" data-unidad-id="@unidad.UnidadID">
-                                    @foreach (var material in materiales)
-                                    {
-                                        <li class="list-group-item d-flex justify-content-between align-items-center" data-id="@material.MaterialID">
-                                            <span class="d-flex align-items-center gap-2">
-                                                @if (materiales.Count > 1)
-                                                {
-                                                    <i class="fas fa-grip-vertical drag-handle-material text-muted" style="cursor: grab;" title="Arrastrar para reordenar"></i>
-                                                }
-                                                <i class="fas fa-file"></i>
-                                                @material.Nombre
-                                                <span class="badge bg-info">@material.TipoRecurso</span>
-                                            </span>
-                                            <span class="d-flex align-items-center gap-2">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary"
-                                                        data-bs-toggle="modal" data-bs-target="#modalEditarMaterial"
-                                                        data-id="@material.MaterialID" data-nombre="@material.Nombre"
-                                                        data-tipo="@material.TipoRecurso" data-url="@material.RutaURL">
-                                                    <i class="fas fa-pen"></i>
-                                                </button>
-                                                @using (Html.BeginForm("DeleteMaterial", "InductionMaintenance", new { id = material.MaterialID }, FormMethod.Post, new { @class = "d-inline" }))
-                                                {
-                                                    @Html.AntiForgeryToken()
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                            onclick="return confirm('¿Eliminar este material?');">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                }
-                                            </span>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                            else
-                            {
-                                <p class="text-muted mb-3">
-                                    <i class="fas fa-info-circle"></i> No hay materiales en esta unidad.
-                                    <button type="button" class="btn btn-link p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalAgregarMaterial" data-preselect-unidad="@unidad.UnidadID">
-                                        Agregar el primero
-                                    </button>
-                                </p>
-                            }
-
-                            <h6><i class="fas fa-file-upload"></i> Entregables</h6>
-                            @if (entregablesActivos.Any())
-                            {
-                                <ul class="list-group sortable-entregables" data-unidad-id="@unidad.UnidadID">
-                                    @foreach (var entregable in entregablesActivos)
-                                    {
-                                        <li class="list-group-item d-flex justify-content-between align-items-center" data-id="@entregable.EntregableID">
-                                            <span class="d-flex align-items-center gap-2">
-                                                @if (entregablesActivos.Count > 1)
-                                                {
-                                                    <i class="fas fa-grip-vertical drag-handle-entregable text-muted" style="cursor: grab;" title="Arrastrar para reordenar"></i>
-                                                }
-                                                <i class="fas fa-file-alt"></i>
-                                                @entregable.Titulo
-                                                <small class="text-muted">
-                                                    (@(entregable.FechaLimite.HasValue ? entregable.FechaLimite.Value.ToString("dd/MM/yyyy") : "Sin límite") &middot; @entregable.PonderacionMax.ToString("F2") pts)
-                                                </small>
-                                            </span>
-                                            <span class="d-flex align-items-center gap-2">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary"
-                                                        data-bs-toggle="modal" data-bs-target="#modalEditarEntregable"
-                                                        data-id="@entregable.EntregableID" data-titulo="@entregable.Titulo"
-                                                        data-instrucciones="@entregable.Instrucciones"
-                                                        data-fecha="@(entregable.FechaLimite.HasValue ? entregable.FechaLimite.Value.ToString("yyyy-MM-dd") : "")"
-                                                        data-ponderacion="@entregable.PonderacionMax.ToString(System.Globalization.CultureInfo.InvariantCulture)">
-                                                    <i class="fas fa-pen"></i>
-                                                </button>
-                                                @using (Html.BeginForm("DeleteEntregable", "InductionMaintenance", new { id = entregable.EntregableID }, FormMethod.Post, new { @class = "d-inline" }))
-                                                {
-                                                    @Html.AntiForgeryToken()
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                            onclick="return confirm('¿Eliminar este entregable?');">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                }
-                                            </span>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                            else
-                            {
-                                <p class="text-muted mb-0">
-                                    <i class="fas fa-info-circle"></i> No hay entregables en esta unidad.
-                                    <button type="button" class="btn btn-link p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalAgregarEntregable" data-preselect-unidad="@unidad.UnidadID">
-                                        Agregar el primero
-                                    </button>
-                                </p>
-                            }
-                        </div>
-                    </div>
+                <div class="alert alert-warning small mt-2 mb-0">
+                    <i class="fas fa-info-circle"></i>
+                    <span>
+                        Los cambios que hagas aquí (crear, editar, eliminar, reordenar) no se guardan hasta que aprietes
+                        <strong>"Guardar Cambios"</strong> al final de la página.
+                    </span>
                 </div>
             }
         </div>
-    }
-    else
-    {
-        <div class="alert alert-info text-center">
-            <i class="fas fa-info-circle"></i>
+    </div>
+
+    <div id="accordionUnidades" class="accordion"></div>
+
+    <div id="sinUnidadesMsg" class="alert alert-info text-center d-none justify-content-center">
+        <i class="fas fa-info-circle"></i>
+        <span>
             No hay unidades creadas para esta materia.
-            <button type="button" class="btn btn-link p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalNuevaUnidad">
-                Crear la primera unidad
-            </button>
-        </div>
-    }
+            @if (puedeEditarContenido)
+            {
+                <button type="button" class="btn btn-link p-0 align-baseline" id="btnCrearPrimeraUnidad">
+                    Crear la primera unidad
+                </button>
+            }
+        </span>
+    </div>
 </div>
 
 <div style="display:none">@Html.AntiForgeryToken()</div>
 
-@* ===================== Modal: Nueva Unidad ===================== *@
-<div class="modal fade" id="modalNuevaUnidad" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            @using (Html.BeginForm("CreateUnidad", "InductionMaintenance", FormMethod.Post))
-            {
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="MateriaID" value="@materiaId" />
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Nueva Unidad</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label class="control-label">Nombre</label>
-                        <input type="text" name="Nombre" class="form-control" placeholder="Ej: Historia y Filosofía Institucional" required />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Unidad</button>
-                </div>
-            }
+<div class="guardar-cambios-bar" id="guardarCambiosBar">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="small text-warning mb-0"><i class="fas fa-exclamation-triangle"></i> Tienes cambios sin guardar.</span>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnDescartarCambios">
+                <i class="fas fa-undo"></i> Descartar Cambios
+            </button>
+            <button type="button" class="btn btn-success" id="btnGuardarCambios">
+                <i class="fas fa-save"></i> Guardar Cambios
+            </button>
         </div>
     </div>
 </div>
 
-@* ===================== Modal: Agregar Material ===================== *@
-<div class="modal fade" id="modalAgregarMaterial" tabindex="-1" aria-hidden="true">
+@* ===================== Modal: Unidad (Nueva/Editar) ===================== *@
+<div class="modal fade" id="modalUnidad" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            @using (Html.BeginForm("CreateMaterial", "InductionMaintenance", FormMethod.Post))
-            {
-                @Html.AntiForgeryToken()
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Agregar Material</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalUnidadTitle"><i class="fas fa-plus-circle"></i> Nueva Unidad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="unidadModalKey" />
+                <div class="form-group">
+                    <label class="control-label">Nombre</label>
+                    <input type="text" id="unidadModalNombre" class="form-control" placeholder="Ej: Historia y Filosofía Institucional" required />
                 </div>
-                <div class="modal-body">
-                    <div class="form-group mb-3">
-                        <label class="control-label">Unidad</label>
-                        <select name="UnidadID" id="agregarMaterialUnidadSelect" class="form-select" required>
-                            <option value="">-- Selecciona unidad --</option>
-                            @foreach (var u in unidades)
-                            {
-                                <option value="@u.UnidadID">Unidad @u.Orden: @u.Nombre</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Nombre</label>
-                        <input type="text" name="Nombre" class="form-control" placeholder="Ej: Historia de la UTTN - Documento Oficial" required />
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Tipo de Recurso</label>
-                        <select name="TipoRecurso" class="form-select" required>
-                            <option value="">-- Seleccione tipo --</option>
-                            @foreach (var tipo in tiposRecurso)
-                            {
-                                <option value="@tipo">@tipo</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label">URL del Recurso</label>
-                        <input type="text" name="RutaURL" class="form-control" placeholder="https://www.uttn.edu.mx/docs/archivo.pdf" required />
-                        <small class="form-text text-muted">URL completa del recurso (debe comenzar con http:// o https://)</small>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Material</button>
-                </div>
-            }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarUnidadModal"><i class="fas fa-save"></i> Guardar Unidad</button>
+            </div>
         </div>
     </div>
 </div>
 
-@* ===================== Modal: Agregar Entregable ===================== *@
-<div class="modal fade" id="modalAgregarEntregable" tabindex="-1" aria-hidden="true">
+@* ===================== Modal: Material (Agregar/Editar) ===================== *@
+<div class="modal fade" id="modalMaterial" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            @using (Html.BeginForm("CreateEntregable", "InductionMaintenance", FormMethod.Post))
-            {
-                @Html.AntiForgeryToken()
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-file-upload"></i> Agregar Entregable</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalMaterialTitle"><i class="fas fa-plus-circle"></i> Agregar Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="materialModalUKey" />
+                <input type="hidden" id="materialModalMKey" />
+                <div class="form-group mb-3" id="materialModalUnidadGroup">
+                    <label class="control-label">Unidad</label>
+                    <select id="materialModalUnidadSelect" class="form-select" required>
+                        <option value="">-- Selecciona unidad --</option>
+                    </select>
                 </div>
-                <div class="modal-body">
-                    <div class="form-group mb-3">
-                        <label class="control-label">Unidad</label>
-                        <select name="UnidadID" id="agregarEntregableUnidadSelect" class="form-select" required>
-                            <option value="">-- Selecciona unidad --</option>
-                            @foreach (var u in unidades)
-                            {
-                                <option value="@u.UnidadID">Unidad @u.Orden: @u.Nombre</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Título</label>
-                        <input type="text" name="Titulo" class="form-control" placeholder="Ej: Ensayo sobre valores institucionales" required />
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Instrucciones</label>
-                        <textarea name="Instrucciones" class="form-control" rows="4" placeholder="Describe qué debe entregar el aspirante..."></textarea>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 form-group mb-3">
-                            <label class="control-label">Fecha Límite</label>
-                            <input type="date" name="FechaLimite" class="form-control" />
-                        </div>
-                        <div class="col-md-6 form-group mb-3">
-                            <label class="control-label">Ponderación Máxima</label>
-                            <input type="number" name="PonderacionMax" class="form-control" step="0.01" min="0" max="100" required />
-                        </div>
-                    </div>
+                <div class="form-group mb-3">
+                    <label class="control-label">Nombre</label>
+                    <input type="text" id="materialModalNombre" class="form-control" placeholder="Ej: Historia de la UTTN - Documento Oficial" required />
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Entregable</button>
+                <div class="form-group mb-3">
+                    <label class="control-label">Tipo de Recurso</label>
+                    <select id="materialModalTipo" class="form-select" required>
+                        <option value="">-- Seleccione tipo --</option>
+                        @foreach (var tipo in tiposRecurso)
+                        {
+                            <option value="@tipo">@tipo</option>
+                        }
+                    </select>
                 </div>
-            }
+                <div class="form-group">
+                    <label class="control-label">URL del Recurso</label>
+                    <input type="text" id="materialModalUrl" class="form-control" placeholder="https://www.uttn.edu.mx/docs/archivo.pdf" required />
+                    <small class="form-text text-muted">URL completa del recurso (debe comenzar con http:// o https://)</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarMaterialModal"><i class="fas fa-save"></i> Guardar Material</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Entregable (Agregar/Editar) ===================== *@
+<div class="modal fade" id="modalEntregable" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEntregableTitle"><i class="fas fa-file-upload"></i> Agregar Entregable</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="entregableModalUKey" />
+                <input type="hidden" id="entregableModalEKey" />
+                <div class="form-group mb-3" id="entregableModalUnidadGroup">
+                    <label class="control-label">Unidad</label>
+                    <select id="entregableModalUnidadSelect" class="form-select" required>
+                        <option value="">-- Selecciona unidad --</option>
+                    </select>
+                </div>
+                <div class="form-group mb-3">
+                    <label class="control-label">Título</label>
+                    <input type="text" id="entregableModalTitulo" class="form-control" placeholder="Ej: Ensayo sobre valores institucionales" required />
+                </div>
+                <div class="form-group mb-3">
+                    <label class="control-label">Instrucciones</label>
+                    <textarea id="entregableModalInstrucciones" class="form-control" rows="4" placeholder="Describe qué debe entregar el aspirante..."></textarea>
+                </div>
+                <div class="form-group mb-3">
+                    <label class="control-label">Fecha Límite</label>
+                    <input type="date" id="entregableModalFecha" class="form-control" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarEntregableModal"><i class="fas fa-save"></i> Guardar Entregable</button>
+            </div>
         </div>
     </div>
 </div>
@@ -342,14 +234,23 @@
                     </div>
                     <div class="modal-body">
                         <div class="form-group mb-3">
-                            <label class="control-label">Unidad</label>
-                            <select name="unidadId" id="asignarUnidadSelect" class="form-select" required>
-                                <option value="">-- Selecciona unidad --</option>
-                                @foreach (var u in unidades)
-                                {
-                                    <option value="@u.UnidadID">Unidad @u.Orden: @u.Nombre</option>
-                                }
-                            </select>
+                            <label class="control-label d-block">Unidad(es)</label>
+                            <div class="dropdown" data-bs-auto-close="outside">
+                                <button type="button" class="btn btn-outline-secondary dropdown-toggle w-100 text-start" id="asignarUnidadesToggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Selecciona unidad(es)
+                                </button>
+                                <div class="dropdown-menu w-100 p-2" style="max-height: 220px; overflow-y: auto;">
+                                    <div class="form-check mb-1 pb-1 border-bottom">
+                                        <input type="checkbox" class="form-check-input" id="asignarMateriaCompleta" />
+                                        <label class="form-check-label fw-semibold" for="asignarMateriaCompleta">
+                                            Materia completa (todas las unidades)
+                                        </label>
+                                    </div>
+                                    <div id="asignarUnidadesContainer">
+                                        <p class="text-muted small mb-0">Cargando unidades...</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="form-group mb-3">
@@ -366,7 +267,7 @@
 
                         <div class="form-group mb-3" id="listaManualContainer" style="display: none;">
                             <label class="form-label small text-muted mb-1">Buscar en la lista</label>
-                            <input type="text" id="filtroAspirantes" class="form-control form-control-sm mb-2" placeholder="Nombre o matrícula..." />
+                            <input type="text" id="filtroAspirantes" class="form-control form-control-sm mb-2" placeholder="Nombre o folio..." />
                             <div id="asignarAspirantesContainer">
                                 <p class="text-muted small mb-0">Selecciona una unidad para ver los aspirantes.</p>
                             </div>
@@ -375,7 +276,7 @@
                         <div class="form-check mb-0">
                             <input type="checkbox" class="form-check-input" name="reasignar" value="true" id="reasignar" />
                             <label class="form-check-label" for="reasignar">
-                                Reasignar a quienes ya tienen esta unidad (reinicia su estado a "Asignado" y borra su calificación previa)
+                                Reasignar a quienes ya tienen alguna de estas unidades (reinicia su estado a "Asignado")
                             </label>
                         </div>
                     </div>
@@ -389,113 +290,48 @@
     </div>
 }
 
-@* ===================== Modal: Editar Unidad ===================== *@
-<div class="modal fade" id="modalEditarUnidad" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            @using (Html.BeginForm("EditUnidad", "InductionMaintenance", FormMethod.Post))
-            {
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="unidadId" id="editUnidadId" />
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-pen"></i> Editar Unidad</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label class="control-label">Nombre</label>
-                        <input type="text" name="nombre" id="editUnidadNombre" class="form-control" required />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
-                </div>
-            }
-        </div>
-    </div>
-</div>
+@section styles {
+    <style>
+        /* .btn-link es blanco por defecto (pensado para fondos oscuros como el
+           navbar) — dentro de este .alert-info claro queda casi invisible. */
+        #btnCrearPrimeraUnidad {
+            color: var(--primary-color);
+            text-decoration: underline;
+            font-weight: 600;
+        }
 
-@* ===================== Modal: Editar Material ===================== *@
-<div class="modal fade" id="modalEditarMaterial" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            @using (Html.BeginForm("EditMaterial", "InductionMaintenance", FormMethod.Post))
-            {
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="materialId" id="editMaterialId" />
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-pen"></i> Editar Material</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group mb-3">
-                        <label class="control-label">Nombre</label>
-                        <input type="text" name="nombre" id="editMaterialNombre" class="form-control" required />
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Tipo de Recurso</label>
-                        <select name="tipoRecurso" id="editMaterialTipo" class="form-select" required>
-                            @foreach (var tipo in tiposRecurso)
-                            {
-                                <option value="@tipo">@tipo</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label">URL del Recurso</label>
-                        <input type="text" name="rutaURL" id="editMaterialUrl" class="form-control" required />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
-                </div>
-            }
-        </div>
-    </div>
-</div>
+        #btnCrearPrimeraUnidad:hover {
+            color: var(--primary-color);
+            opacity: 0.8;
+        }
 
-@* ===================== Modal: Editar Entregable ===================== *@
-<div class="modal fade" id="modalEditarEntregable" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            @using (Html.BeginForm("EditEntregable", "InductionMaintenance", FormMethod.Post))
-            {
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="entregableId" id="editEntregableId" />
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-pen"></i> Editar Entregable</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group mb-3">
-                        <label class="control-label">Título</label>
-                        <input type="text" name="titulo" id="editEntregableTitulo" class="form-control" required />
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="control-label">Instrucciones</label>
-                        <textarea name="instrucciones" id="editEntregableInstrucciones" class="form-control" rows="4"></textarea>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 form-group mb-3">
-                            <label class="control-label">Fecha Límite</label>
-                            <input type="date" name="fechaLimite" id="editEntregableFecha" class="form-control" />
-                        </div>
-                        <div class="col-md-6 form-group mb-3">
-                            <label class="control-label">Ponderación Máxima</label>
-                            <input type="number" name="ponderacionMax" id="editEntregablePonderacion" class="form-control" step="0.01" min="0" max="100" required />
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
-                </div>
-            }
-        </div>
-    </div>
-</div>
+        .guardar-cambios-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1040;
+            background-color: var(--white);
+            border-top: 1px solid var(--gray-200);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+            padding: 0.75rem 1.5rem;
+            display: none;
+        }
+
+        body.tiene-cambios-pendientes .guardar-cambios-bar {
+            display: block;
+        }
+
+        body.tiene-cambios-pendientes {
+            padding-bottom: 4rem;
+        }
+
+        .item-eliminado {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+    </style>
+}
 
 @section scripts {
     @Scripts.Render("~/bundles/jqueryval")
@@ -503,187 +339,663 @@
             integrity="sha512-TelkP3PCMJv+viMWynjKcvLsQzx6dJHvIGhfqzFtZKgAjKM1YPqcwzzDEoTc/BHjf43PcPzTQOjuTr4YdE8lNQ=="
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
-        $(document).ready(function () {
-            var token = $('input[name="__RequestVerificationToken"]').first().val();
+        (function () {
+            var materiaId = @materiaId;
+            var puedeAsignar = @Html.Raw(puedeAsignar ? "true" : "false");
+            var puedeEditarContenido = @Html.Raw(puedeEditarContenido ? "true" : "false");
+            var tiposRecurso = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(tiposRecurso));
+            var initialData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(estadoInicial));
+
+            var tempCounter = 0;
+            var dirty = false;
+            var expandedKeys = {};
+            var sortableInstances = [];
+
+            var state = initialData.map(function (u) {
+                return {
+                    id: u.id,
+                    tempId: null,
+                    nombre: u.nombre,
+                    eliminado: false,
+                    materiales: u.materiales.map(function (m) {
+                        return { id: m.id, tempId: null, nombre: m.nombre, tipoRecurso: m.tipoRecurso, rutaURL: m.rutaURL, eliminado: false };
+                    }),
+                    entregables: u.entregables.map(function (e) {
+                        return { id: e.id, tempId: null, titulo: e.titulo, instrucciones: e.instrucciones, fechaLimite: e.fechaLimite, eliminado: false };
+                    })
+                };
+            });
+
+            function keyOf(item) {
+                return item.id != null ? ('id' + item.id) : ('tmp' + item.tempId);
+            }
 
             function escapeHtml(str) {
                 return $('<div>').text(str || '').html();
             }
 
-            // ---------- Drag and drop reordering ----------
-            // Todo este bloque depende de SortableJS (CDN externo). Si la librería no
-            // cargó (red bloqueada, CDN caído, etc.) se omite el reordenamiento por
-            // arrastre, pero el resto de la página (modales de Agregar/Editar/Asignar)
-            // debe seguir funcionando con normalidad.
-            if (typeof Sortable !== 'undefined') {
+            function findUnidad(ukey) {
+                return state.find(function (u) { return keyOf(u) === ukey; });
+            }
+
+            function findMaterial(ukey, mkey) {
+                var u = findUnidad(ukey);
+                return u ? u.materiales.find(function (m) { return keyOf(m) === mkey; }) : null;
+            }
+
+            function findEntregable(ukey, ekey) {
+                var u = findUnidad(ukey);
+                return u ? u.entregables.find(function (e) { return keyOf(e) === ekey; }) : null;
+            }
+
+            function markDirty() {
+                dirty = true;
+                document.body.classList.add('tiene-cambios-pendientes');
+                updateAsignarState();
+            }
+
+            function unidadesVisibles() {
+                return state.filter(function (u) { return !u.eliminado; });
+            }
+
+            // ---------- Render ----------
+            function render() {
+                var container = document.getElementById('accordionUnidades');
+                var visibles = unidadesVisibles();
+                document.getElementById('sinUnidadesMsg').classList.toggle('d-none', visibles.length > 0);
+
+                var html = '';
+                visibles.forEach(function (u, idx) {
+                    var uKey = keyOf(u);
+                    var materiales = u.materiales.filter(function (m) { return !m.eliminado; });
+                    var entregables = u.entregables.filter(function (e) { return !e.eliminado; });
+                    var expanded = !!expandedKeys[uKey];
+
+                    html += '<div class="accordion-item" data-key="' + uKey + '">';
+                    html += '  <h2 class="accordion-header d-flex align-items-stretch">';
+                    if (puedeEditarContenido && visibles.length > 1) {
+                        html += '    <span class="drag-handle-unidad d-flex align-items-center px-2 text-muted" style="cursor: grab;" title="Arrastrar para reordenar"><i class="fas fa-grip-vertical"></i></span>';
+                    }
+                    html += '    <button class="accordion-button ' + (expanded ? '' : 'collapsed') + ' flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#unidad-' + uKey + '">';
+                    html += '      <i class="fas fa-list-ol me-2"></i> Unidad ' + (idx + 1) + ': ' + escapeHtml(u.nombre);
+                    html += '    </button>';
+                    html += '  </h2>';
+                    html += '  <div id="unidad-' + uKey + '" class="accordion-collapse collapse ' + (expanded ? 'show' : '') + '">';
+                    html += '    <div class="accordion-body">';
+                    if (puedeEditarContenido) {
+                        html += '      <div class="d-flex justify-content-end gap-2 mb-3">';
+                        html += '        <button type="button" class="btn btn-sm btn-secondary" data-action="editar-unidad" data-key="' + uKey + '"><i class="fas fa-pen"></i> Editar</button>';
+                        html += '        <button type="button" class="btn btn-sm btn-danger" data-action="eliminar-unidad" data-key="' + uKey + '"><i class="fas fa-trash"></i> Eliminar</button>';
+                        html += '      </div>';
+                    }
+
+                    html += '      <h6><i class="fas fa-file"></i> Materiales</h6>';
+                    if (materiales.length) {
+                        html += '      <ul class="list-group sortable-materiales mb-3" data-unidad-key="' + uKey + '">';
+                        materiales.forEach(function (m) {
+                            var mKey = keyOf(m);
+                            html += '        <li class="list-group-item d-flex justify-content-between align-items-center" data-key="' + mKey + '">';
+                            html += '          <span class="d-flex align-items-center gap-2">';
+                            if (puedeEditarContenido && materiales.length > 1) {
+                                html += '            <i class="fas fa-grip-vertical drag-handle-material text-muted" style="cursor: grab;" title="Arrastrar para reordenar"></i>';
+                            }
+                            html += '            <i class="fas fa-file"></i> ' + escapeHtml(m.nombre) + ' <span class="badge bg-info">' + escapeHtml(m.tipoRecurso) + '</span>';
+                            html += '          </span>';
+                            if (puedeEditarContenido) {
+                                html += '          <span class="d-flex align-items-center gap-2">';
+                                html += '            <button type="button" class="btn btn-sm btn-outline-secondary" data-action="editar-material" data-ukey="' + uKey + '" data-mkey="' + mKey + '"><i class="fas fa-pen"></i></button>';
+                                html += '            <button type="button" class="btn btn-sm btn-outline-danger" data-action="eliminar-material" data-ukey="' + uKey + '" data-mkey="' + mKey + '"><i class="fas fa-trash"></i></button>';
+                                html += '          </span>';
+                            }
+                            html += '        </li>';
+                        });
+                        html += '      </ul>';
+                    } else {
+                        html += '      <p class="text-muted mb-3"><i class="fas fa-info-circle"></i> No hay materiales en esta unidad. ';
+                        if (puedeEditarContenido) {
+                            html += '        <button type="button" class="btn btn-link p-0 align-baseline" data-action="agregar-material" data-key="' + uKey + '">Agregar el primero</button>';
+                        }
+                        html += '      </p>';
+                    }
+
+                    html += '      <h6><i class="fas fa-file-upload"></i> Entregables</h6>';
+                    if (entregables.length) {
+                        html += '      <ul class="list-group sortable-entregables" data-unidad-key="' + uKey + '">';
+                        entregables.forEach(function (e) {
+                            var eKey = keyOf(e);
+                            html += '        <li class="list-group-item d-flex justify-content-between align-items-center" data-key="' + eKey + '">';
+                            html += '          <span class="d-flex align-items-center gap-2">';
+                            if (puedeEditarContenido && entregables.length > 1) {
+                                html += '            <i class="fas fa-grip-vertical drag-handle-entregable text-muted" style="cursor: grab;" title="Arrastrar para reordenar"></i>';
+                            }
+                            html += '            <i class="fas fa-file-alt"></i> ' + escapeHtml(e.titulo);
+                            html += '            <small class="text-muted">(' + (e.fechaLimite ? formatFecha(e.fechaLimite) : 'Sin límite') + ')</small>';
+                            html += '          </span>';
+                            if (puedeEditarContenido) {
+                                html += '          <span class="d-flex align-items-center gap-2">';
+                                html += '            <button type="button" class="btn btn-sm btn-outline-secondary" data-action="editar-entregable" data-ukey="' + uKey + '" data-ekey="' + eKey + '"><i class="fas fa-pen"></i></button>';
+                                html += '            <button type="button" class="btn btn-sm btn-outline-danger" data-action="eliminar-entregable" data-ukey="' + uKey + '" data-ekey="' + eKey + '"><i class="fas fa-trash"></i></button>';
+                                html += '          </span>';
+                            }
+                            html += '        </li>';
+                        });
+                        html += '      </ul>';
+                    } else {
+                        html += '      <p class="text-muted mb-0"><i class="fas fa-info-circle"></i> No hay entregables en esta unidad. ';
+                        if (puedeEditarContenido) {
+                            html += '        <button type="button" class="btn btn-link p-0 align-baseline" data-action="agregar-entregable" data-key="' + uKey + '">Agregar el primero</button>';
+                        }
+                        html += '      </p>';
+                    }
+
+                    html += '    </div>';
+                    html += '  </div>';
+                    html += '</div>';
+                });
+
+                container.innerHTML = html;
+                initSortable();
+                updateAsignarState();
+                var sinUnidades = visibles.length === 0;
+                if (puedeEditarContenido) {
+                    document.getElementById('btnAgregarMaterialTop').disabled = sinUnidades;
+                    document.getElementById('btnAgregarEntregableTop').disabled = sinUnidades;
+                }
+            }
+
+            function formatFecha(iso) {
+                var parts = (iso || '').split('-');
+                if (parts.length !== 3) { return iso; }
+                return parts[2] + '/' + parts[1] + '/' + parts[0];
+            }
+
+            // ---------- Sortable (drag & drop reordering) ----------
+            function initSortable() {
+                sortableInstances.forEach(function (s) { s.destroy(); });
+                sortableInstances = [];
+
+                if (typeof Sortable === 'undefined') { return; }
+
                 var unidadesContainer = document.getElementById('accordionUnidades');
-                if (unidadesContainer && unidadesContainer.children.length > 1) {
-                    new Sortable(unidadesContainer, {
+                if (unidadesContainer.children.length > 1) {
+                    sortableInstances.push(new Sortable(unidadesContainer, {
                         handle: '.drag-handle-unidad',
                         animation: 150,
                         onEnd: function () {
-                            var ids = Array.from(unidadesContainer.children).map(function (el) { return el.dataset.unidadId; });
-                            $.ajax({
-                                url: '@Url.Action("ReordenarUnidades", "InductionMaintenance")',
-                                type: 'POST',
-                                traditional: true,
-                                data: { materiaId: @materiaId, orderedIds: ids, __RequestVerificationToken: token }
-                            });
+                            var order = Array.from(unidadesContainer.children).map(function (el) { return el.dataset.key; });
+                            var visibles = unidadesVisibles();
+                            var reordered = order.map(function (k) { return visibles.find(function (u) { return keyOf(u) === k; }); });
+                            var eliminadas = state.filter(function (u) { return u.eliminado; });
+                            state = reordered.concat(eliminadas);
+                            markDirty();
+                            render();
                         }
-                    });
+                    }));
                 }
 
                 document.querySelectorAll('.sortable-materiales').forEach(function (el) {
                     if (el.children.length > 1) {
-                        new Sortable(el, {
+                        sortableInstances.push(new Sortable(el, {
                             handle: '.drag-handle-material',
                             animation: 150,
                             onEnd: function () {
-                                var ids = Array.from(el.children).map(function (li) { return li.dataset.id; });
-                                $.ajax({
-                                    url: '@Url.Action("ReordenarMateriales", "InductionMaintenance")',
-                                    type: 'POST',
-                                    traditional: true,
-                                    data: { unidadId: el.dataset.unidadId, orderedIds: ids, __RequestVerificationToken: token }
-                                });
+                                var ukey = el.dataset.unidadKey;
+                                var u = findUnidad(ukey);
+                                if (!u) { return; }
+                                var order = Array.from(el.children).map(function (li) { return li.dataset.key; });
+                                var visibles = u.materiales.filter(function (m) { return !m.eliminado; });
+                                var reordered = order.map(function (k) { return visibles.find(function (m) { return keyOf(m) === k; }); });
+                                var eliminados = u.materiales.filter(function (m) { return m.eliminado; });
+                                u.materiales = reordered.concat(eliminados);
+                                markDirty();
+                                render();
                             }
-                        });
+                        }));
                     }
                 });
 
                 document.querySelectorAll('.sortable-entregables').forEach(function (el) {
                     if (el.children.length > 1) {
-                        new Sortable(el, {
+                        sortableInstances.push(new Sortable(el, {
                             handle: '.drag-handle-entregable',
                             animation: 150,
                             onEnd: function () {
-                                var ids = Array.from(el.children).map(function (li) { return li.dataset.id; });
-                                $.ajax({
-                                    url: '@Url.Action("ReordenarEntregables", "InductionMaintenance")',
-                                    type: 'POST',
-                                    traditional: true,
-                                    data: { unidadId: el.dataset.unidadId, orderedIds: ids, __RequestVerificationToken: token }
-                                });
+                                var ukey = el.dataset.unidadKey;
+                                var u = findUnidad(ukey);
+                                if (!u) { return; }
+                                var order = Array.from(el.children).map(function (li) { return li.dataset.key; });
+                                var visibles = u.entregables.filter(function (e) { return !e.eliminado; });
+                                var reordered = order.map(function (k) { return visibles.find(function (e) { return keyOf(e) === k; }); });
+                                var eliminados = u.entregables.filter(function (e) { return e.eliminado; });
+                                u.entregables = reordered.concat(eliminados);
+                                markDirty();
+                                render();
                             }
+                        }));
+                    }
+                });
+            }
+
+            // ---------- Track expand/collapse so re-render doesn't collapse everything ----------
+            document.getElementById('accordionUnidades').addEventListener('shown.bs.collapse', function (e) {
+                var item = e.target.closest('.accordion-item');
+                if (item) { expandedKeys[item.dataset.key] = true; }
+            });
+            document.getElementById('accordionUnidades').addEventListener('hidden.bs.collapse', function (e) {
+                var item = e.target.closest('.accordion-item');
+                if (item) { delete expandedKeys[item.dataset.key]; }
+            });
+
+            // ---------- Delegated click handling for data-action buttons ----------
+            document.getElementById('accordionUnidades').addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-action]');
+                if (!btn) { return; }
+                var action = btn.dataset.action;
+
+                if (action === 'editar-unidad') { openUnidadModal(btn.dataset.key); }
+                else if (action === 'eliminar-unidad') { eliminarUnidad(btn.dataset.key); }
+                else if (action === 'agregar-material') { openMaterialModal(null, null, btn.dataset.key); }
+                else if (action === 'editar-material') { openMaterialModal(btn.dataset.ukey, btn.dataset.mkey, null); }
+                else if (action === 'eliminar-material') { eliminarMaterial(btn.dataset.ukey, btn.dataset.mkey); }
+                else if (action === 'agregar-entregable') { openEntregableModal(null, null, btn.dataset.key); }
+                else if (action === 'editar-entregable') { openEntregableModal(btn.dataset.ukey, btn.dataset.ekey, null); }
+                else if (action === 'eliminar-entregable') { eliminarEntregable(btn.dataset.ukey, btn.dataset.ekey); }
+            });
+
+            // ---------- Unidad: nueva / editar / eliminar ----------
+            function openUnidadModal(key) {
+                var u = key ? findUnidad(key) : null;
+                document.getElementById('modalUnidadTitle').innerHTML = u
+                    ? '<i class="fas fa-pen"></i> Editar Unidad'
+                    : '<i class="fas fa-plus-circle"></i> Nueva Unidad';
+                document.getElementById('unidadModalKey').value = key || '';
+                document.getElementById('unidadModalNombre').value = u ? u.nombre : '';
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalUnidad')).show();
+            }
+
+            if (puedeEditarContenido) {
+                document.getElementById('btnNuevaUnidad').addEventListener('click', function () { openUnidadModal(null); });
+                document.getElementById('btnCrearPrimeraUnidad').addEventListener('click', function () { openUnidadModal(null); });
+            }
+
+            document.getElementById('btnGuardarUnidadModal').addEventListener('click', function () {
+                var nombre = document.getElementById('unidadModalNombre').value.trim();
+                if (!nombre) { alert('El nombre de la unidad es obligatorio.'); return; }
+                var key = document.getElementById('unidadModalKey').value;
+
+                if (key) {
+                    var u = findUnidad(key);
+                    if (u) { u.nombre = nombre; }
+                } else {
+                    state.push({ id: null, tempId: --tempCounter, nombre: nombre, eliminado: false, materiales: [], entregables: [] });
+                }
+                markDirty();
+                render();
+                bootstrap.Modal.getInstance(document.getElementById('modalUnidad')).hide();
+            });
+
+            function eliminarUnidad(key) {
+                if (!confirm('¿Eliminar esta unidad y todos sus materiales y entregables?')) { return; }
+                var u = findUnidad(key);
+                if (!u) { return; }
+                if (u.id == null) {
+                    state = state.filter(function (x) { return x !== u; });
+                } else {
+                    u.eliminado = true;
+                }
+                markDirty();
+                render();
+            }
+
+            // ---------- Material: agregar / editar / eliminar ----------
+            function refreshUnidadSelect(selectEl, preselectKey) {
+                var visibles = unidadesVisibles();
+                selectEl.innerHTML = '<option value="">-- Selecciona unidad --</option>' + visibles.map(function (u, idx) {
+                    return '<option value="' + keyOf(u) + '">Unidad ' + (idx + 1) + ': ' + escapeHtml(u.nombre) + '</option>';
+                }).join('');
+                if (preselectKey) { selectEl.value = preselectKey; }
+            }
+
+            function openMaterialModal(ukey, mkey, preselectUkey) {
+                var editing = !!(ukey && mkey);
+                var m = editing ? findMaterial(ukey, mkey) : null;
+                document.getElementById('modalMaterialTitle').innerHTML = editing
+                    ? '<i class="fas fa-pen"></i> Editar Material'
+                    : '<i class="fas fa-plus-circle"></i> Agregar Material';
+                document.getElementById('materialModalUKey').value = editing ? ukey : '';
+                document.getElementById('materialModalMKey').value = editing ? mkey : '';
+                document.getElementById('materialModalNombre').value = m ? m.nombre : '';
+                document.getElementById('materialModalTipo').value = m ? m.tipoRecurso : '';
+                document.getElementById('materialModalUrl').value = m ? m.rutaURL : '';
+
+                var unidadGroup = document.getElementById('materialModalUnidadGroup');
+                var unidadSelect = document.getElementById('materialModalUnidadSelect');
+                if (editing) {
+                    unidadGroup.style.display = 'none';
+                } else {
+                    unidadGroup.style.display = '';
+                    refreshUnidadSelect(unidadSelect, preselectUkey || ukey);
+                }
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalMaterial')).show();
+            }
+
+            if (puedeEditarContenido) {
+                document.getElementById('btnAgregarMaterialTop').addEventListener('click', function () { openMaterialModal(null, null, null); });
+            }
+
+            document.getElementById('btnGuardarMaterialModal').addEventListener('click', function () {
+                var nombre = document.getElementById('materialModalNombre').value.trim();
+                var tipoRecurso = document.getElementById('materialModalTipo').value;
+                var rutaURL = document.getElementById('materialModalUrl').value.trim();
+                if (!nombre || !tipoRecurso || !rutaURL) { alert('Todos los campos son obligatorios.'); return; }
+
+                var ukey = document.getElementById('materialModalUKey').value;
+                var mkey = document.getElementById('materialModalMKey').value;
+
+                if (ukey && mkey) {
+                    var m = findMaterial(ukey, mkey);
+                    if (m) { m.nombre = nombre; m.tipoRecurso = tipoRecurso; m.rutaURL = rutaURL; }
+                } else {
+                    var targetKey = document.getElementById('materialModalUnidadSelect').value;
+                    if (!targetKey) { alert('Selecciona una unidad.'); return; }
+                    var u = findUnidad(targetKey);
+                    if (!u) { return; }
+                    u.materiales.push({ id: null, tempId: --tempCounter, nombre: nombre, tipoRecurso: tipoRecurso, rutaURL: rutaURL, eliminado: false });
+                }
+                markDirty();
+                render();
+                bootstrap.Modal.getInstance(document.getElementById('modalMaterial')).hide();
+            });
+
+            function eliminarMaterial(ukey, mkey) {
+                if (!confirm('¿Eliminar este material?')) { return; }
+                var m = findMaterial(ukey, mkey);
+                var u = findUnidad(ukey);
+                if (!m || !u) { return; }
+                if (m.id == null) {
+                    u.materiales = u.materiales.filter(function (x) { return x !== m; });
+                } else {
+                    m.eliminado = true;
+                }
+                markDirty();
+                render();
+            }
+
+            // ---------- Entregable: agregar / editar / eliminar ----------
+            function openEntregableModal(ukey, ekey, preselectUkey) {
+                var editing = !!(ukey && ekey);
+                var e = editing ? findEntregable(ukey, ekey) : null;
+                document.getElementById('modalEntregableTitle').innerHTML = editing
+                    ? '<i class="fas fa-pen"></i> Editar Entregable'
+                    : '<i class="fas fa-file-upload"></i> Agregar Entregable';
+                document.getElementById('entregableModalUKey').value = editing ? ukey : '';
+                document.getElementById('entregableModalEKey').value = editing ? ekey : '';
+                document.getElementById('entregableModalTitulo').value = e ? e.titulo : '';
+                document.getElementById('entregableModalInstrucciones').value = e ? (e.instrucciones || '') : '';
+                document.getElementById('entregableModalFecha').value = e ? (e.fechaLimite || '') : '';
+
+                var unidadGroup = document.getElementById('entregableModalUnidadGroup');
+                var unidadSelect = document.getElementById('entregableModalUnidadSelect');
+                if (editing) {
+                    unidadGroup.style.display = 'none';
+                } else {
+                    unidadGroup.style.display = '';
+                    refreshUnidadSelect(unidadSelect, preselectUkey || ukey);
+                }
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntregable')).show();
+            }
+
+            if (puedeEditarContenido) {
+                document.getElementById('btnAgregarEntregableTop').addEventListener('click', function () { openEntregableModal(null, null, null); });
+            }
+
+            document.getElementById('btnGuardarEntregableModal').addEventListener('click', function () {
+                var titulo = document.getElementById('entregableModalTitulo').value.trim();
+                if (!titulo) { alert('El título es obligatorio.'); return; }
+                var instrucciones = document.getElementById('entregableModalInstrucciones').value;
+                var fechaLimite = document.getElementById('entregableModalFecha').value || null;
+
+                var ukey = document.getElementById('entregableModalUKey').value;
+                var ekey = document.getElementById('entregableModalEKey').value;
+
+                if (ukey && ekey) {
+                    var e = findEntregable(ukey, ekey);
+                    if (e) { e.titulo = titulo; e.instrucciones = instrucciones; e.fechaLimite = fechaLimite; }
+                } else {
+                    var targetKey = document.getElementById('entregableModalUnidadSelect').value;
+                    if (!targetKey) { alert('Selecciona una unidad.'); return; }
+                    var u = findUnidad(targetKey);
+                    if (!u) { return; }
+                    u.entregables.push({ id: null, tempId: --tempCounter, titulo: titulo, instrucciones: instrucciones, fechaLimite: fechaLimite, eliminado: false });
+                }
+                markDirty();
+                render();
+                bootstrap.Modal.getInstance(document.getElementById('modalEntregable')).hide();
+            });
+
+            function eliminarEntregable(ukey, ekey) {
+                if (!confirm('¿Eliminar este entregable?')) { return; }
+                var e = findEntregable(ukey, ekey);
+                var u = findUnidad(ukey);
+                if (!e || !u) { return; }
+                if (e.id == null) {
+                    u.entregables = u.entregables.filter(function (x) { return x !== e; });
+                } else {
+                    e.eliminado = true;
+                }
+                markDirty();
+                render();
+            }
+
+            // ---------- Guardar / Descartar ----------
+            document.getElementById('btnDescartarCambios').addEventListener('click', function () {
+                if (!confirm('¿Descartar todos los cambios sin guardar?')) { return; }
+                dirty = false;
+                location.reload();
+            });
+
+            document.getElementById('btnGuardarCambios').addEventListener('click', function () {
+                var visibles = unidadesVisibles();
+                for (var i = 0; i < visibles.length; i++) {
+                    if (!visibles[i].nombre || !visibles[i].nombre.trim()) {
+                        alert('Todas las unidades deben tener un nombre.');
+                        return;
+                    }
+                }
+                for (var j = 0; j < visibles.length; j++) {
+                    var activos = visibles[j].entregables.filter(function (e) { return !e.eliminado; });
+                    if (activos.length === 0) {
+                        alert('La unidad "' + visibles[j].nombre + '" necesita al menos un entregable activo. Agrega uno antes de guardar.');
+                        return;
+                    }
+                }
+
+                var payload = state.map(function (u) {
+                    return {
+                        UnidadID: u.id,
+                        Nombre: u.nombre,
+                        Eliminado: u.eliminado,
+                        Materiales: u.materiales.map(function (m) {
+                            return { MaterialID: m.id, Nombre: m.nombre, TipoRecurso: m.tipoRecurso, RutaURL: m.rutaURL, Eliminado: m.eliminado };
+                        }),
+                        Entregables: u.entregables.map(function (e) {
+                            return { EntregableID: e.id, Titulo: e.titulo, Instrucciones: e.instrucciones, FechaLimite: e.fechaLimite, Eliminado: e.eliminado };
+                        })
+                    };
+                });
+
+                var token = $('input[name="__RequestVerificationToken"]').first().val();
+                var $btn = $(this);
+                var originalHtml = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+
+                $.ajax({
+                    url: '@Url.Action("GuardarCambiosUnidades", "InductionMaintenance")',
+                    type: 'POST',
+                    data: { materiaId: materiaId, cambiosJson: JSON.stringify(payload), __RequestVerificationToken: token },
+                    success: function (resp) {
+                        if (resp.success) {
+                            dirty = false;
+                            location.reload();
+                        } else {
+                            alert(resp.message || 'No se pudo guardar.');
+                            $btn.prop('disabled', false).html(originalHtml);
+                        }
+                    },
+                    error: function () {
+                        alert('Error de conexión al guardar los cambios.');
+                        $btn.prop('disabled', false).html(originalHtml);
+                    }
+                });
+            });
+
+            window.addEventListener('beforeunload', function (e) {
+                if (dirty) { e.preventDefault(); e.returnValue = ''; }
+            });
+
+            // ---------- Asignar Unidad (sigue posteando directo al servidor; solo usa unidades ya guardadas) ----------
+            function updateAsignarState() {
+                if (!puedeAsignar) { return; }
+                var btn = document.getElementById('btnAsignar');
+                var unidadesContainer = document.getElementById('asignarUnidadesContainer');
+                var guardadas = state.filter(function (u) { return !u.eliminado && u.id != null; });
+
+                if (dirty) {
+                    btn.disabled = true;
+                    btn.title = 'Guarda tus cambios antes de asignar.';
+                } else {
+                    btn.disabled = false;
+                    btn.title = '';
+                }
+
+                if (unidadesContainer) {
+                    var previamenteMarcadas = $(unidadesContainer).find('.asignar-unidad-checkbox:checked').map(function () { return this.value; }).get();
+                    if (!guardadas.length) {
+                        unidadesContainer.innerHTML = '<p class="text-muted small mb-0">No hay unidades guardadas todavía.</p>';
+                    } else {
+                        unidadesContainer.innerHTML = guardadas.map(function (u) {
+                            var idx = unidadesVisibles().indexOf(u);
+                            var checked = previamenteMarcadas.indexOf(String(u.id)) !== -1 ? 'checked' : '';
+                            return '<div class="form-check">' +
+                                '<input type="checkbox" class="form-check-input asignar-unidad-checkbox" name="unidadIds" value="' + u.id + '" id="asignarUnidad_' + u.id + '" ' + checked + ' />' +
+                                '<label class="form-check-label" for="asignarUnidad_' + u.id + '">Unidad ' + (idx + 1) + ': ' + escapeHtml(u.nombre) + '</label>' +
+                                '</div>';
+                        }).join('');
+                    }
+                }
+                updateAsignarToggleLabel();
+            }
+
+            function updateAsignarToggleLabel() {
+                var toggle = document.getElementById('asignarUnidadesToggle');
+                var unidadesContainer = document.getElementById('asignarUnidadesContainer');
+                if (!toggle || !unidadesContainer) { return; }
+                var marcadas = $(unidadesContainer).find('.asignar-unidad-checkbox:checked');
+                if (marcadas.length === 0) {
+                    toggle.textContent = 'Selecciona unidad(es)';
+                } else if (marcadas.length === 1) {
+                    toggle.textContent = $(marcadas[0]).closest('.form-check').find('label').text();
+                } else {
+                    toggle.textContent = marcadas.length + ' unidades seleccionadas';
+                }
+            }
+
+            if (puedeAsignar) {
+                var unidadesContainerEl = document.getElementById('asignarUnidadesContainer');
+                var materiaCompletaCheckbox = document.getElementById('asignarMateriaCompleta');
+                var aspirantesContainer = document.getElementById('asignarAspirantesContainer');
+
+                function toggleModo() {
+                    var manual = $('#modoManual').is(':checked');
+                    $('#listaManualContainer').toggle(manual);
+                }
+                $('input[name="modo"]').on('change', toggleModo);
+                toggleModo();
+
+                function unidadesSeleccionadas() {
+                    return $(unidadesContainerEl).find('.asignar-unidad-checkbox:checked').map(function () { return this.value; }).get();
+                }
+
+                function cargarAspirantes(unidadId) {
+                    if (!aspirantesContainer) { return; }
+                    if (!unidadId) {
+                        aspirantesContainer.innerHTML = '<p class="text-muted small mb-0">Selecciona al menos una unidad para ver los aspirantes.</p>';
+                        return;
+                    }
+                    aspirantesContainer.innerHTML = '<p class="text-muted small mb-0"><i class="fas fa-spinner fa-spin"></i> Cargando...</p>';
+                    $.getJSON('@Url.Action("AsignarUnidadAspirantes", "Coordinador")', { unidadId: unidadId }, function (resp) {
+                        if (!resp.success) {
+                            aspirantesContainer.innerHTML = '<p class="text-danger small mb-0">' + escapeHtml(resp.message || 'Error al cargar aspirantes.') + '</p>';
+                            return;
+                        }
+                        if (!resp.aspirantes.length) {
+                            aspirantesContainer.innerHTML = '<p class="text-muted small mb-0">No hay aspirantes en tu carrera todavía.</p>';
+                            return;
+                        }
+                        var html = '<div class="row g-2" id="aspirantesListContainer" style="max-height:320px; overflow-y:auto;">';
+                        resp.aspirantes.forEach(function (a) {
+                            html += '<div class="col-md-6 aspirante-item" data-nombre="' + escapeHtml((a.nombre || '').toLowerCase()) + '" data-folio="' + escapeHtml((a.folio || '').toLowerCase()) + '">' +
+                                '<div class="form-check d-flex align-items-center gap-2">' +
+                                '<input type="checkbox" class="form-check-input aspirante-checkbox" name="aspiranteIds" value="' + a.id + '" id="asp_' + a.id + '" />' +
+                                '<label class="form-check-label flex-grow-1" for="asp_' + a.id + '">' + escapeHtml(a.nombre) +
+                                '<small class="text-muted d-block">Folio: ' + escapeHtml(a.folio || 'N/A') + '</small></label>' +
+                                (a.yaAsignado ? '<span class="badge bg-secondary">Ya asignado</span>' : '') +
+                                '</div></div>';
                         });
-                    }
-                });
-            } else if (window.console) {
-                console.warn('SortableJS no se cargó; el reordenamiento por arrastre está deshabilitado en esta página.');
-            }
-
-            // ---------- Preselect unidad when opening Agregar Material/Entregable from an empty unit ----------
-            document.getElementById('modalAgregarMaterial').addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget;
-                var pre = button && button.dataset ? button.dataset.preselectUnidad : null;
-                if (pre) {
-                    document.getElementById('agregarMaterialUnidadSelect').value = pre;
-                }
-            });
-
-            document.getElementById('modalAgregarEntregable').addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget;
-                var pre = button && button.dataset ? button.dataset.preselectUnidad : null;
-                if (pre) {
-                    document.getElementById('agregarEntregableUnidadSelect').value = pre;
-                }
-            });
-
-            // ---------- Editar Unidad ----------
-            document.getElementById('modalEditarUnidad').addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget;
-                document.getElementById('editUnidadId').value = button.dataset.id;
-                document.getElementById('editUnidadNombre').value = button.dataset.nombre;
-            });
-
-            // ---------- Editar Material ----------
-            document.getElementById('modalEditarMaterial').addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget;
-                document.getElementById('editMaterialId').value = button.dataset.id;
-                document.getElementById('editMaterialNombre').value = button.dataset.nombre;
-                document.getElementById('editMaterialTipo').value = button.dataset.tipo;
-                document.getElementById('editMaterialUrl').value = button.dataset.url;
-            });
-
-            // ---------- Editar Entregable ----------
-            document.getElementById('modalEditarEntregable').addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget;
-                document.getElementById('editEntregableId').value = button.dataset.id;
-                document.getElementById('editEntregableTitulo').value = button.dataset.titulo;
-                document.getElementById('editEntregableInstrucciones').value = button.dataset.instrucciones;
-                document.getElementById('editEntregableFecha').value = button.dataset.fecha;
-                document.getElementById('editEntregablePonderacion').value = button.dataset.ponderacion;
-            });
-
-            // ---------- Asignar Unidad ----------
-            var selectUnidadAsignar = document.getElementById('asignarUnidadSelect');
-            var aspirantesContainer = document.getElementById('asignarAspirantesContainer');
-
-            function toggleModo() {
-                var manual = $('#modoManual').is(':checked');
-                $('#listaManualContainer').toggle(manual);
-            }
-            $('input[name="modo"]').on('change', toggleModo);
-            toggleModo();
-
-            function cargarAspirantes(unidadId) {
-                if (!aspirantesContainer) { return; }
-                if (!unidadId) {
-                    aspirantesContainer.innerHTML = '<p class="text-muted small mb-0">Selecciona una unidad para ver los aspirantes.</p>';
-                    return;
-                }
-                aspirantesContainer.innerHTML = '<p class="text-muted small mb-0"><i class="fas fa-spinner fa-spin"></i> Cargando...</p>';
-                $.getJSON('@Url.Action("AsignarUnidadAspirantes", "Coordinador")', { unidadId: unidadId }, function (resp) {
-                    if (!resp.success) {
-                        aspirantesContainer.innerHTML = '<p class="text-danger small mb-0">' + escapeHtml(resp.message || 'Error al cargar aspirantes.') + '</p>';
-                        return;
-                    }
-                    if (!resp.aspirantes.length) {
-                        aspirantesContainer.innerHTML = '<p class="text-muted small mb-0">No hay aspirantes en tu carrera todavía.</p>';
-                        return;
-                    }
-                    var html = '<div class="row g-2" id="aspirantesListContainer" style="max-height:320px; overflow-y:auto;">';
-                    resp.aspirantes.forEach(function (a) {
-                        html += '<div class="col-md-6 aspirante-item" data-nombre="' + escapeHtml((a.nombre || '').toLowerCase()) + '" data-matricula="' + escapeHtml((a.matricula || '').toLowerCase()) + '">' +
-                            '<div class="form-check d-flex align-items-center gap-2">' +
-                            '<input type="checkbox" class="form-check-input aspirante-checkbox" name="aspiranteIds" value="' + a.id + '" id="asp_' + a.id + '" />' +
-                            '<label class="form-check-label flex-grow-1" for="asp_' + a.id + '">' + escapeHtml(a.nombre) +
-                            '<small class="text-muted d-block">Matrícula: ' + escapeHtml(a.matricula || 'N/A') + '</small></label>' +
-                            (a.yaAsignado ? '<span class="badge bg-secondary">Ya asignado</span>' : '') +
-                            '</div></div>';
+                        html += '</div>';
+                        aspirantesContainer.innerHTML = html;
                     });
-                    html += '</div>';
-                    aspirantesContainer.innerHTML = html;
-                });
-            }
-
-            if (selectUnidadAsignar) {
-                selectUnidadAsignar.addEventListener('change', function () {
-                    cargarAspirantes(this.value);
-                });
-            }
-
-            $(document).on('input', '#filtroAspirantes', function () {
-                var term = $(this).val().toLowerCase();
-                $('.aspirante-item').each(function () {
-                    var nombre = $(this).data('nombre') || '';
-                    var matricula = $(this).data('matricula') || '';
-                    var visible = String(nombre).indexOf(term) !== -1 || String(matricula).indexOf(term) !== -1;
-                    $(this).toggle(visible);
-                });
-            });
-
-            $('.asignar-form').on('submit', function (e) {
-                var manual = $('#modoManual').is(':checked');
-                if (manual && $('.aspirante-checkbox:checked').length === 0) {
-                    e.preventDefault();
-                    alert('Selecciona al menos un aspirante, o cambia a "Todos mis aspirantes".');
-                    return false;
                 }
-                var $btn = $(this).find('button[type="submit"]');
-                $btn.prop('disabled', true);
-                $btn.html('<i class="fas fa-spinner fa-spin"></i> Asignando...');
-            });
-        });
+
+                if (unidadesContainerEl) {
+                    $(unidadesContainerEl).on('change', '.asignar-unidad-checkbox', function () {
+                        var todasMarcadas = $(unidadesContainerEl).find('.asignar-unidad-checkbox').length > 0 &&
+                            $(unidadesContainerEl).find('.asignar-unidad-checkbox:not(:checked)').length === 0;
+                        if (materiaCompletaCheckbox) { materiaCompletaCheckbox.checked = todasMarcadas; }
+                        updateAsignarToggleLabel();
+                        var seleccionadas = unidadesSeleccionadas();
+                        cargarAspirantes(seleccionadas.length ? seleccionadas[0] : null);
+                    });
+                }
+
+                if (materiaCompletaCheckbox) {
+                    materiaCompletaCheckbox.addEventListener('change', function () {
+                        $(unidadesContainerEl).find('.asignar-unidad-checkbox').prop('checked', this.checked);
+                        updateAsignarToggleLabel();
+                        var seleccionadas = unidadesSeleccionadas();
+                        cargarAspirantes(seleccionadas.length ? seleccionadas[0] : null);
+                    });
+                }
+
+                $(document).on('input', '#filtroAspirantes', function () {
+                    var term = $(this).val().toLowerCase();
+                    $('.aspirante-item').each(function () {
+                        var nombre = $(this).data('nombre') || '';
+                        var folio = $(this).data('folio') || '';
+                        var visible = String(nombre).indexOf(term) !== -1 || String(folio).indexOf(term) !== -1;
+                        $(this).toggle(visible);
+                    });
+                });
+
+                $('.asignar-form').on('submit', function (e) {
+                    if (unidadesSeleccionadas().length === 0) {
+                        e.preventDefault();
+                        alert('Selecciona al menos una unidad, o marca "Materia completa".');
+                        return false;
+                    }
+                    var manual = $('#modoManual').is(':checked');
+                    if (manual && $('.aspirante-checkbox:checked').length === 0) {
+                        e.preventDefault();
+                        alert('Selecciona al menos un aspirante, o cambia a "Todos mis aspirantes".');
+                        return false;
+                    }
+                    var $btn = $(this).find('button[type="submit"]');
+                    $btn.prop('disabled', true);
+                    $btn.html('<i class="fas fa-spinner fa-spin"></i> Asignando...');
+                });
+            }
+
+            render();
+        })();
     </script>
 }

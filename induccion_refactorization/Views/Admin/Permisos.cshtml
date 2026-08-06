@@ -6,19 +6,25 @@
     var permisos = (List<induccion_refactorization.Models.Ind_Permiso>)ViewBag.Permisos;
     var permisosRol = (List<Ind_RolPermiso>)ViewBag.PermisosRol;
     var rolesOriginales = (int[])ViewBag.RolesOriginales;
+    bool puedeCrear = ViewBag.PuedeCrear;
+    bool puedeEditar = ViewBag.PuedeEditar;
+    bool puedeEliminar = ViewBag.PuedeEliminar;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
-        <a href="@Url.Action("Index", "Admin")" class="btn btn-outline-secondary btn-sm mb-2">
-            <i class="fas fa-arrow-left"></i> Volver al Panel
+        <a href="@Url.Action("GestionUsuarios", "Admin")" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="fas fa-arrow-left"></i> Volver a Gestión de Usuarios
         </a>
         <h2 class="mb-1"><i class="fas fa-shield-alt text-primary"></i> Permisos por Rol</h2>
         <p class="text-muted mb-0">Define qué puede leer, crear, editar y eliminar cada rol en cada sección del sistema.</p>
     </div>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoRol">
-        <i class="fas fa-plus"></i> Nuevo Rol
-    </button>
+    @if (puedeCrear)
+    {
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoRol">
+            <i class="fas fa-plus"></i> Nuevo Rol
+        </button>
+    }
 </div>
 
 <div class="card mb-3" style="overflow: visible;">
@@ -67,22 +73,33 @@ else
                     <span class="badge bg-secondary ms-2">Inactivo</span>
                 }
             </h5>
-            @if (!rolesOriginales.Contains(rolSeleccionado.RolID))
+            @if (puedeEliminar && !rolesOriginales.Contains(rolSeleccionado.RolID))
             {
-                using (Html.BeginForm("ToggleRol", "Admin", new { id = rolSeleccionado.RolID }, FormMethod.Post, new { @class = "d-inline" }))
-                {
-                    @Html.AntiForgeryToken()
-                    <button type="submit"
-                            class="btn btn-sm @(rolSeleccionado.Activo ? "btn-outline-danger" : "btn-outline-success")"
-                            onclick="return confirm('¿Está seguro de @(rolSeleccionado.Activo ? "desactivar" : "reactivar") este rol?');">
-                        <i class="fas @(rolSeleccionado.Activo ? "fa-ban" : "fa-check")"></i>
-                        @(rolSeleccionado.Activo ? "Desactivar Rol" : "Reactivar Rol")
-                    </button>
-                }
+                <div class="d-flex gap-2">
+                    @using (Html.BeginForm("ToggleRol", "Admin", new { id = rolSeleccionado.RolID }, FormMethod.Post, new { @class = "d-inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit"
+                                class="btn btn-sm @(rolSeleccionado.Activo ? "btn-outline-danger" : "btn-outline-success")"
+                                onclick="return confirm('¿Está seguro de @(rolSeleccionado.Activo ? "desactivar" : "reactivar") este rol?');">
+                            <i class="fas @(rolSeleccionado.Activo ? "fa-ban" : "fa-check")"></i>
+                            @(rolSeleccionado.Activo ? "Desactivar Rol" : "Reactivar Rol")
+                        </button>
+                    }
+                    @using (Html.BeginForm("DeleteRol", "Admin", new { id = rolSeleccionado.RolID }, FormMethod.Post, new { @class = "d-inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit"
+                                class="btn btn-sm btn-danger"
+                                onclick="return confirm('¿Está seguro de ELIMINAR PERMANENTEMENTE el rol \'@rolSeleccionado.Nombre\'? Esta acción no se puede deshacer. Solo funciona si ya no tiene usuarios asignados.');">
+                            <i class="fas fa-trash"></i> Eliminar Rol
+                        </button>
+                    }
+                </div>
             }
-            else
+            else if (rolesOriginales.Contains(rolSeleccionado.RolID))
             {
-                <span class="small text-muted"><i class="fas fa-lock"></i> Rol original del sistema, no se puede desactivar.</span>
+                <span class="small text-muted"><i class="fas fa-lock"></i> Rol original del sistema, no se puede desactivar ni eliminar.</span>
             }
         </div>
         <div class="card-body p-0">
@@ -116,16 +133,16 @@ else
                                         <input type="hidden" name="permisos[@idx].PermisoID" value="@permiso.PermisoID" />
                                     </td>
                                     <td class="text-center" data-label="Leer">
-                                        <input type="checkbox" class="form-check-input" name="permisos[@idx].Leer" value="true" checked="@(actual != null && actual.PuedeLeer ? "checked" : null)" />
+                                        <input type="checkbox" class="form-check-input" name="permisos[@idx].Leer" value="true" checked="@(actual != null && actual.PuedeLeer ? "checked" : null)" disabled="@(puedeEditar ? null : "disabled")" />
                                     </td>
                                     <td class="text-center" data-label="Crear">
-                                        <input type="checkbox" class="form-check-input" name="permisos[@idx].Crear" value="true" checked="@(actual != null && actual.PuedeCrear ? "checked" : null)" />
+                                        <input type="checkbox" class="form-check-input" name="permisos[@idx].Crear" value="true" checked="@(actual != null && actual.PuedeCrear ? "checked" : null)" disabled="@(puedeEditar ? null : "disabled")" />
                                     </td>
                                     <td class="text-center" data-label="Editar">
-                                        <input type="checkbox" class="form-check-input" name="permisos[@idx].Editar" value="true" checked="@(actual != null && actual.PuedeEditar ? "checked" : null)" />
+                                        <input type="checkbox" class="form-check-input" name="permisos[@idx].Editar" value="true" checked="@(actual != null && actual.PuedeEditar ? "checked" : null)" disabled="@(puedeEditar ? null : "disabled")" />
                                     </td>
                                     <td class="text-center" data-label="Eliminar">
-                                        <input type="checkbox" class="form-check-input" name="permisos[@idx].Eliminar" value="true" checked="@(actual != null && actual.PuedeEliminar ? "checked" : null)" />
+                                        <input type="checkbox" class="form-check-input" name="permisos[@idx].Eliminar" value="true" checked="@(actual != null && actual.PuedeEliminar ? "checked" : null)" disabled="@(puedeEditar ? null : "disabled")" />
                                     </td>
                                 </tr>
                                 idx++;
@@ -133,9 +150,12 @@ else
                         </tbody>
                     </table>
                 </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Permisos</button>
-                </div>
+                if (puedeEditar)
+                {
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Permisos</button>
+                    </div>
+                }
             }
         </div>
     </div>

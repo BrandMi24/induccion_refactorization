@@ -17,8 +17,9 @@ namespace induccion_refactorization.Models
         // Core Tables
         public virtual DbSet<Usuario> Usuarios { get; set; }
         public virtual DbSet<Role> Roles { get; set; }
-        public virtual DbSet<Aspirante> Aspirantes { get; set; }
         public virtual DbSet<Carrera> Carreras { get; set; }
+        public virtual DbSet<TipoCarrera> TiposCarreras { get; set; }
+        public virtual DbSet<Ind_Area> Ind_Areas { get; set; }
         public virtual DbSet<Periodo> Periodos { get; set; }
 
         // Induction Module Tables
@@ -28,6 +29,7 @@ namespace induccion_refactorization.Models
         public virtual DbSet<Ind_ProgresoAspirante> Ind_ProgresoAspirante { get; set; }
         public virtual DbSet<Ind_Entregable> Ind_Entregables { get; set; }
         public virtual DbSet<Ind_Submision> Ind_Submisiones { get; set; }
+        public virtual DbSet<Ind_FelicitacionVista> Ind_FelicitacionesVistas { get; set; }
 
         // Permission System Tables
         public virtual DbSet<Ind_Permiso> Ind_Permisos { get; set; }
@@ -41,26 +43,6 @@ namespace induccion_refactorization.Models
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
-            // Configure decimal precision for Calificacion
-            modelBuilder.Entity<Ind_ProgresoAspirante>()
-                .Property(e => e.Calificacion)
-                .HasPrecision(5, 2);
-
-            // Configure decimal precision for PromedioGeneral
-            modelBuilder.Entity<Aspirante>()
-                .Property(e => e.PromedioGeneral)
-                .HasPrecision(3, 1);
-
-            // Configure decimal precision for Ind_Entregable.PonderacionMax
-            modelBuilder.Entity<Ind_Entregable>()
-                .Property(e => e.PonderacionMax)
-                .HasPrecision(5, 2);
-
-            // Configure decimal precision for Ind_Submision.Calificacion
-            modelBuilder.Entity<Ind_Submision>()
-                .Property(e => e.Calificacion)
-                .HasPrecision(5, 2);
-
             // Configure default values
             modelBuilder.Entity<Ind_Materia>()
                 .Property(e => e.Activo)
@@ -120,8 +102,8 @@ namespace induccion_refactorization.Models
                 .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<Ind_ProgresoAspirante>()
-                .HasRequired(p => p.Aspirante)
-                .WithMany(a => a.Ind_ProgresoAspirantes)
+                .HasRequired(p => p.AspiranteUsuario)
+                .WithMany()
                 .HasForeignKey(p => p.AspiranteID)
                 .WillCascadeOnDelete(false);
 
@@ -138,8 +120,8 @@ namespace induccion_refactorization.Models
                 .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<Ind_Submision>()
-                .HasRequired(s => s.Aspirante)
-                .WithMany(a => a.Ind_Submisiones)
+                .HasRequired(s => s.AspiranteUsuario)
+                .WithMany()
                 .HasForeignKey(s => s.AspiranteID)
                 .WillCascadeOnDelete(false);
 
@@ -162,7 +144,7 @@ namespace induccion_refactorization.Models
                 .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<Documento>()
-                .HasRequired(d => d.Aspirante)
+                .HasRequired(d => d.AspiranteUsuario)
                 .WithMany()
                 .HasForeignKey(d => d.AspiranteID)
                 .WillCascadeOnDelete(false);
@@ -183,6 +165,21 @@ namespace induccion_refactorization.Models
                 .HasOptional(d => d.Usuario)
                 .WithMany()
                 .HasForeignKey(d => d.UsuarioID)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Ind_FelicitacionVista>()
+                .HasKey(f => new { f.AspiranteID, f.MateriaID });
+
+            modelBuilder.Entity<Ind_FelicitacionVista>()
+                .HasRequired(f => f.AspiranteUsuario)
+                .WithMany()
+                .HasForeignKey(f => f.AspiranteID)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<Ind_FelicitacionVista>()
+                .HasRequired(f => f.Ind_Materia)
+                .WithMany()
+                .HasForeignKey(f => f.MateriaID)
                 .WillCascadeOnDelete(false);
 
             // Ind_Materia <-> Carrera many-to-many (a materia can target several careers, or all via TodasLasCarreras)

@@ -17,8 +17,9 @@ namespace induccion_refactorization.ViewModels
         public Ind_Materia Materia { get; set; }
         public int TotalUnidades { get; set; }
         public int UnidadesCompletadas { get; set; }
-        public decimal? PromedioCalificacion { get; set; }
         public List<Ind_ProgresoAspirante> ProgresoAspirantes { get; set; } = new List<Ind_ProgresoAspirante>();
+        public bool TieneAccionRequerida { get; set; }
+        public bool TieneFelicitacionPendiente { get; set; }
 
         public int PorcentajeProgreso =>
             TotalUnidades > 0 ? (int)((UnidadesCompletadas * 100.0) / TotalUnidades) : 0;

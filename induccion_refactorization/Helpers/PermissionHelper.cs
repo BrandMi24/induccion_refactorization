@@ -61,6 +61,20 @@ namespace induccion_refactorization.Helpers
             }
         }
 
+        // Llena ViewBag.PuedeCrear / PuedeEditar / PuedeEliminar para la sección
+        // (clave) que renderiza la vista actual, así las vistas pueden ocultar
+        // botones de acciones que el usuario no puede usar (en vez de solo dejar
+        // que el [RequierePermiso] del lado del servidor lo rechace después de
+        // que ya le mostramos el botón). Leer no se incluye porque, si la acción
+        // GET que renderiza la vista ya está protegida con Accion.Leer, el usuario
+        // ya demostró tener ese permiso con solo haber llegado a la página.
+        public static void AsignarFlagsVista(dynamic viewBag, CaptacionDbContext db, int usuarioId, int rolId, string permisoClave)
+        {
+            viewBag.PuedeCrear = TieneAcceso(db, usuarioId, rolId, permisoClave, Accion.Crear);
+            viewBag.PuedeEditar = TieneAcceso(db, usuarioId, rolId, permisoClave, Accion.Editar);
+            viewBag.PuedeEliminar = TieneAcceso(db, usuarioId, rolId, permisoClave, Accion.Eliminar);
+        }
+
         private static bool? GetValor(Ind_UsuarioPermiso overrideUsuario, Accion accion)
         {
             if (overrideUsuario == null)

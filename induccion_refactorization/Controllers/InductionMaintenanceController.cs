@@ -93,12 +93,15 @@ namespace induccion_refactorization.Controllers
             ViewBag.PeriodosFiltro = new SelectList(db.Periodos, "PeriodoID", "Nombre", periodoId);
 
             // Datos para los modales de Nueva Materia / Editar Materia (ambos viven en
-            // esta misma vista en vez de páginas aparte).
+            // esta misma vista en vez de páginas aparte). Solo se ofrecen carreras
+            // activas para asignar (igual que Periodos), aunque una materia ya
+            // asignada a una carrera desactivada conserva esa asignación.
             ViewBag.CarrerasList = CarreraScopeHelper.IsScopedRole(rolId)
-                ? db.Carreras.Where(c => carreraIds.Contains(c.CarreraID)).OrderBy(c => c.Nombre).ToList()
-                : db.Carreras.OrderBy(c => c.Nombre).ToList();
+                ? db.Carreras.Where(c => c.Activo && carreraIds.Contains(c.CarreraID)).OrderBy(c => c.Nombre).ToList()
+                : db.Carreras.Where(c => c.Activo).OrderBy(c => c.Nombre).ToList();
             ViewBag.PuedeElegirTodasLasCarreras = rolId == CarreraScopeHelper.RolAdmin;
             ViewBag.PeriodosList = new SelectList(db.Periodos.Where(p => p.Activo), "PeriodoID", "Nombre");
+            PermissionHelper.AsignarFlagsVista(ViewBag, db, CurrentUsuarioID, rolId, "GestionContenido");
 
             return View(result);
         }
@@ -263,377 +266,193 @@ namespace induccion_refactorization.Controllers
 
             ViewBag.MateriaNombre = materia.Nombre;
             ViewBag.MateriaID = materia.MateriaID;
+            PermissionHelper.AsignarFlagsVista(ViewBag, db, CurrentUsuarioID, CurrentRolID, "GestionContenido");
+            ViewBag.PuedeAsignar = PermissionHelper.TieneAcceso(db, CurrentUsuarioID, CurrentRolID, "MisAspirantes", Accion.Crear);
             return View(materia.Ind_Unidades.OrderBy(u => u.Orden).ToList());
         }
 
-        // POST: /InductionMaintenance/CreateUnidad
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Crear)]
-        public ActionResult CreateUnidad(Ind_Unidad unidad)
-        {
-            ModelState.Remove("Orden");
-
-            var materiaPadre = db.Ind_Materias.Include(m => m.Carreras).FirstOrDefault(m => m.MateriaID == unidad.MateriaID);
-            if (!CarreraScopeHelper.MateriaEnScope(materiaPadre, CurrentRolID, CurrentCarreraIds))
-            {
-                TempData["Error"] = "No tienes acceso a esta materia.";
-                return RedirectToAction("Index");
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    unidad.Orden = db.Ind_Unidades.Count(u => u.MateriaID == unidad.MateriaID) + 1;
-                    db.Ind_Unidades.Add(unidad);
-                    db.SaveChanges();
-
-                    TempData["Success"] = $"Unidad '{unidad.Nombre}' creada exitosamente.";
-                }
-                catch (Exception ex)
-                {
-                    TempData["Error"] = $"Error al guardar: {ex.Message}";
-                }
-            }
-            else
-            {
-                TempData["Error"] = "No se pudo crear la unidad. Verifica los datos.";
-            }
-
-            return RedirectToAction("ManageUnidades", new { id = unidad.MateriaID });
-        }
-
-        // POST: /InductionMaintenance/EditUnidad
+        // POST: /InductionMaintenance/GuardarCambiosUnidades
+        // Reemplaza a las 12 acciones individuales de Crear/Editar/Eliminar/Reordenar
+        // unidad/material/entregable: la vista Gestionar Unidades ahora arma todos los
+        // cambios en un árbol de estado en el navegador y los manda de un solo golpe
+        // aquí cuando se aprieta "Guardar Cambios". Todo o nada, dentro de una transacción.
         [HttpPost]
         [ValidateAntiForgeryToken]
         [RequierePermiso("GestionContenido", Accion.Editar)]
-        public ActionResult EditUnidad(int unidadId, string nombre)
+        public JsonResult GuardarCambiosUnidades(int materiaId, string cambiosJson)
         {
-            var unidad = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == unidadId);
-            if (unidad == null)
-            {
-                TempData["Error"] = "Unidad no encontrada.";
-                return RedirectToAction("Index");
-            }
+            var materia = db.Ind_Materias
+                .Include(m => m.Carreras)
+                .Include(m => m.Ind_Unidades.Select(u => u.Ind_Materiales))
+                .Include(m => m.Ind_Unidades.Select(u => u.Ind_Entregables))
+                .FirstOrDefault(m => m.MateriaID == materiaId);
 
-            if (!CarreraScopeHelper.MateriaEnScope(unidad.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-            {
-                TempData["Error"] = "No tienes acceso a esta materia.";
-                return RedirectToAction("Index");
-            }
-
-            if (string.IsNullOrWhiteSpace(nombre))
-            {
-                TempData["Error"] = "El nombre de la unidad es obligatorio.";
-                return RedirectToAction("ManageUnidades", new { id = unidad.MateriaID });
-            }
-
-            try
-            {
-                unidad.Nombre = nombre.Trim();
-                db.SaveChanges();
-                TempData["Success"] = "Unidad actualizada exitosamente.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al actualizar: {ex.Message}";
-            }
-
-            return RedirectToAction("ManageUnidades", new { id = unidad.MateriaID });
-        }
-
-        // POST: /InductionMaintenance/ReordenarUnidades
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Editar)]
-        public JsonResult ReordenarUnidades(int materiaId, int[] orderedIds)
-        {
-            var materia = db.Ind_Materias.Include(m => m.Carreras).FirstOrDefault(m => m.MateriaID == materiaId);
             if (!CarreraScopeHelper.MateriaEnScope(materia, CurrentRolID, CurrentCarreraIds))
             {
                 return Json(new { success = false, message = "No tienes acceso a esta materia." });
             }
 
+            List<UnidadCambioDto> unidadesCambio;
             try
             {
-                var unidades = db.Ind_Unidades.Where(u => u.MateriaID == materiaId && orderedIds.Contains(u.UnidadID)).ToList();
-                for (int i = 0; i < orderedIds.Length; i++)
+                unidadesCambio = Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnidadCambioDto>>(cambiosJson ?? "[]") ?? new List<UnidadCambioDto>();
+            }
+            catch (Exception)
+            {
+                return Json(new { success = false, message = "Los datos enviados no son válidos." });
+            }
+
+            // Los IDs que llegan deben pertenecer a ESTA materia (evita que alguien
+            // edite/elimine unidades, materiales o entregables de otra materia).
+            var unidadIdsValidos = materia.Ind_Unidades.Select(u => u.UnidadID).ToList();
+            var materialIdsValidos = materia.Ind_Unidades.SelectMany(u => u.Ind_Materiales).Select(m => m.MaterialID).ToList();
+            var entregableIdsValidos = materia.Ind_Unidades.SelectMany(u => u.Ind_Entregables).Select(e => e.EntregableID).ToList();
+
+            foreach (var u in unidadesCambio)
+            {
+                if (u.UnidadID.HasValue && !unidadIdsValidos.Contains(u.UnidadID.Value))
                 {
-                    var unidad = unidades.FirstOrDefault(u => u.UnidadID == orderedIds[i]);
-                    if (unidad != null)
-                    {
-                        unidad.Orden = i + 1;
-                    }
+                    return Json(new { success = false, message = "Solicitud inválida." });
                 }
-                db.SaveChanges();
-                return Json(new { success = true });
+                if (u.Materiales.Any(m => m.MaterialID.HasValue && !materialIdsValidos.Contains(m.MaterialID.Value)))
+                {
+                    return Json(new { success = false, message = "Solicitud inválida." });
+                }
+                if (u.Entregables.Any(e => e.EntregableID.HasValue && !entregableIdsValidos.Contains(e.EntregableID.Value)))
+                {
+                    return Json(new { success = false, message = "Solicitud inválida." });
+                }
             }
-            catch (Exception ex)
+
+            foreach (var u in unidadesCambio.Where(u => !u.Eliminado))
             {
-                return Json(new { success = false, message = ex.Message });
+                if (string.IsNullOrWhiteSpace(u.Nombre))
+                {
+                    return Json(new { success = false, message = "Todas las unidades deben tener un nombre." });
+                }
+                if (u.Materiales.Where(m => !m.Eliminado).Any(m => string.IsNullOrWhiteSpace(m.Nombre) || string.IsNullOrWhiteSpace(m.TipoRecurso) || string.IsNullOrWhiteSpace(m.RutaURL)))
+                {
+                    return Json(new { success = false, message = "Todos los materiales deben tener nombre, tipo de recurso y URL." });
+                }
+                if (u.Entregables.Where(e => !e.Eliminado).Any(e => string.IsNullOrWhiteSpace(e.Titulo)))
+                {
+                    return Json(new { success = false, message = "Todos los entregables deben tener un título." });
+                }
             }
-        }
 
-        // POST: /InductionMaintenance/CreateMaterial
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Crear)]
-        public ActionResult CreateMaterial(Ind_Material material)
-        {
-            ModelState.Remove("Orden");
-
-            var unidadData = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == material.UnidadID);
-            if (!CarreraScopeHelper.MateriaEnScope(unidadData?.Ind_Materia, CurrentRolID, CurrentCarreraIds))
+            // Cada unidad necesita al menos un entregable activo — ya no basta con
+            // que la materia tenga uno en total, porque una unidad sin entregable
+            // nunca podría marcarse como revisada (eso ahora depende por completo
+            // de que se revisen sus entregables).
+            var unidadSinEntregable = unidadesCambio
+                .Where(u => !u.Eliminado)
+                .FirstOrDefault(u => !u.Entregables.Any(e => !e.Eliminado));
+            if (unidadSinEntregable != null)
             {
-                TempData["Error"] = "No tienes acceso a esta materia.";
-                return RedirectToAction("Index");
+                var nombreUnidad = string.IsNullOrWhiteSpace(unidadSinEntregable.Nombre) ? "(sin nombre)" : unidadSinEntregable.Nombre;
+                return Json(new { success = false, message = $"La unidad '{nombreUnidad}' necesita al menos un entregable activo. Agrega uno antes de guardar." });
             }
 
-            if (ModelState.IsValid)
+            using (var transaction = db.Database.BeginTransaction())
             {
                 try
                 {
-                    material.Orden = db.Ind_Materiales.Count(m => m.UnidadID == material.UnidadID) + 1;
-                    db.Ind_Materiales.Add(material);
-                    db.SaveChanges();
+                    var ordenUnidad = 0;
+                    foreach (var uDto in unidadesCambio)
+                    {
+                        Ind_Unidad unidad;
+                        if (uDto.UnidadID.HasValue)
+                        {
+                            unidad = materia.Ind_Unidades.First(u => u.UnidadID == uDto.UnidadID.Value);
+                            if (uDto.Eliminado)
+                            {
+                                // Los materiales y entregables ya están cargados (Include) y EF los
+                                // sigue rastreando: hay que quitarlos explícitamente antes de borrar
+                                // la unidad, porque su FK a UnidadID no es nullable (sin ON DELETE CASCADE).
+                                db.Ind_Materiales.RemoveRange(unidad.Ind_Materiales.ToList());
+                                db.Ind_Entregables.RemoveRange(unidad.Ind_Entregables.ToList());
+                                db.Ind_Unidades.Remove(unidad);
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            if (uDto.Eliminado) continue;
+                            unidad = new Ind_Unidad { MateriaID = materiaId };
+                            db.Ind_Unidades.Add(unidad);
+                        }
 
-                    TempData["Success"] = $"Material '{material.Nombre}' agregado exitosamente.";
+                        unidad.Nombre = uDto.Nombre.Trim();
+                        ordenUnidad++;
+                        unidad.Orden = ordenUnidad;
+
+                        var ordenMaterial = 0;
+                        foreach (var mDto in uDto.Materiales)
+                        {
+                            Ind_Material material;
+                            if (mDto.MaterialID.HasValue)
+                            {
+                                material = unidad.Ind_Materiales.First(m => m.MaterialID == mDto.MaterialID.Value);
+                                if (mDto.Eliminado)
+                                {
+                                    db.Ind_Materiales.Remove(material);
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+                                if (mDto.Eliminado) continue;
+                                material = new Ind_Material();
+                                unidad.Ind_Materiales.Add(material);
+                            }
+
+                            material.Nombre = mDto.Nombre.Trim();
+                            material.TipoRecurso = mDto.TipoRecurso.Trim();
+                            material.RutaURL = mDto.RutaURL.Trim();
+                            ordenMaterial++;
+                            material.Orden = ordenMaterial;
+                        }
+
+                        var ordenEntregable = 0;
+                        foreach (var eDto in uDto.Entregables)
+                        {
+                            Ind_Entregable entregable;
+                            if (eDto.EntregableID.HasValue)
+                            {
+                                entregable = unidad.Ind_Entregables.First(e => e.EntregableID == eDto.EntregableID.Value);
+                            }
+                            else
+                            {
+                                if (eDto.Eliminado) continue;
+                                entregable = new Ind_Entregable();
+                                unidad.Ind_Entregables.Add(entregable);
+                            }
+
+                            if (eDto.Eliminado)
+                            {
+                                // Baja lógica, igual que la vieja DeleteEntregable (puede tener submisiones asociadas).
+                                entregable.Activo = false;
+                                continue;
+                            }
+
+                            entregable.Titulo = eDto.Titulo.Trim();
+                            entregable.Instrucciones = eDto.Instrucciones;
+                            entregable.FechaLimite = eDto.FechaLimite;
+                            entregable.Activo = true;
+                            ordenEntregable++;
+                            entregable.Orden = ordenEntregable;
+                        }
+                    }
+
+                    db.SaveChanges();
+                    transaction.Commit();
+                    return Json(new { success = true, message = "Cambios guardados exitosamente." });
                 }
                 catch (Exception ex)
                 {
-                    TempData["Error"] = $"Error al guardar: {ex.Message}";
+                    transaction.Rollback();
+                    return Json(new { success = false, message = $"Error al guardar los cambios: {ex.Message}" });
                 }
-            }
-            else
-            {
-                TempData["Error"] = "No se pudo agregar el material. Verifica los datos.";
-            }
-
-            return RedirectToAction("ManageUnidades", new { id = unidadData?.MateriaID });
-        }
-
-        // POST: /InductionMaintenance/EditMaterial
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Editar)]
-        public ActionResult EditMaterial(int materialId, string nombre, string tipoRecurso, string rutaURL)
-        {
-            var material = db.Ind_Materiales.Find(materialId);
-            if (material == null)
-            {
-                TempData["Error"] = "Material no encontrado.";
-                return RedirectToAction("Index");
-            }
-
-            var unidad = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == material.UnidadID);
-            if (!CarreraScopeHelper.MateriaEnScope(unidad?.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-            {
-                TempData["Error"] = "No tienes acceso a esta materia.";
-                return RedirectToAction("Index");
-            }
-
-            if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(tipoRecurso) || string.IsNullOrWhiteSpace(rutaURL))
-            {
-                TempData["Error"] = "Todos los campos son obligatorios.";
-                return RedirectToAction("ManageUnidades", new { id = unidad?.MateriaID });
-            }
-
-            try
-            {
-                material.Nombre = nombre.Trim();
-                material.TipoRecurso = tipoRecurso.Trim();
-                material.RutaURL = rutaURL.Trim();
-                db.SaveChanges();
-                TempData["Success"] = "Material actualizado exitosamente.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al actualizar: {ex.Message}";
-            }
-
-            return RedirectToAction("ManageUnidades", new { id = unidad?.MateriaID });
-        }
-
-        // POST: /InductionMaintenance/ReordenarMateriales
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Editar)]
-        public JsonResult ReordenarMateriales(int unidadId, int[] orderedIds)
-        {
-            var unidad = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == unidadId);
-            if (!CarreraScopeHelper.MateriaEnScope(unidad?.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-            {
-                return Json(new { success = false, message = "No tienes acceso a esta materia." });
-            }
-
-            try
-            {
-                var materiales = db.Ind_Materiales.Where(m => m.UnidadID == unidadId && orderedIds.Contains(m.MaterialID)).ToList();
-                for (int i = 0; i < orderedIds.Length; i++)
-                {
-                    var material = materiales.FirstOrDefault(m => m.MaterialID == orderedIds[i]);
-                    if (material != null)
-                    {
-                        material.Orden = i + 1;
-                    }
-                }
-                db.SaveChanges();
-                return Json(new { success = true });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = ex.Message });
-            }
-        }
-
-        // POST: /InductionMaintenance/CreateEntregable
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Crear)]
-        public ActionResult CreateEntregable(Ind_Entregable entregable)
-        {
-            ModelState.Remove("Orden");
-
-            var unidadData = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == entregable.UnidadID);
-            if (!CarreraScopeHelper.MateriaEnScope(unidadData?.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-            {
-                TempData["Error"] = "No tienes acceso a esta materia.";
-                return RedirectToAction("Index");
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    entregable.Activo = true;
-                    entregable.Orden = db.Ind_Entregables.Count(e => e.UnidadID == entregable.UnidadID) + 1;
-                    db.Ind_Entregables.Add(entregable);
-                    db.SaveChanges();
-
-                    TempData["Success"] = $"Entregable '{entregable.Titulo}' creado exitosamente.";
-                }
-                catch (Exception ex)
-                {
-                    TempData["Error"] = $"Error al guardar: {ex.Message}";
-                }
-            }
-            else
-            {
-                TempData["Error"] = "No se pudo crear el entregable. Verifica los datos.";
-            }
-
-            return RedirectToAction("ManageUnidades", new { id = unidadData?.MateriaID });
-        }
-
-        // POST: /InductionMaintenance/EditEntregable
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Editar)]
-        public ActionResult EditEntregable(int entregableId, string titulo, string instrucciones, DateTime? fechaLimite, decimal ponderacionMax)
-        {
-            var entregable = db.Ind_Entregables.Find(entregableId);
-            if (entregable == null)
-            {
-                TempData["Error"] = "Entregable no encontrado.";
-                return RedirectToAction("Index");
-            }
-
-            var unidad = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == entregable.UnidadID);
-            if (!CarreraScopeHelper.MateriaEnScope(unidad?.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-            {
-                TempData["Error"] = "No tienes acceso a esta materia.";
-                return RedirectToAction("Index");
-            }
-
-            if (string.IsNullOrWhiteSpace(titulo))
-            {
-                TempData["Error"] = "El título es obligatorio.";
-                return RedirectToAction("ManageUnidades", new { id = unidad?.MateriaID });
-            }
-
-            try
-            {
-                entregable.Titulo = titulo.Trim();
-                entregable.Instrucciones = instrucciones;
-                entregable.FechaLimite = fechaLimite;
-                entregable.PonderacionMax = ponderacionMax;
-                db.SaveChanges();
-                TempData["Success"] = "Entregable actualizado exitosamente.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al actualizar: {ex.Message}";
-            }
-
-            return RedirectToAction("ManageUnidades", new { id = unidad?.MateriaID });
-        }
-
-        // POST: /InductionMaintenance/ReordenarEntregables
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Editar)]
-        public JsonResult ReordenarEntregables(int unidadId, int[] orderedIds)
-        {
-            var unidad = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == unidadId);
-            if (!CarreraScopeHelper.MateriaEnScope(unidad?.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-            {
-                return Json(new { success = false, message = "No tienes acceso a esta materia." });
-            }
-
-            try
-            {
-                var entregables = db.Ind_Entregables.Where(e => e.UnidadID == unidadId && orderedIds.Contains(e.EntregableID)).ToList();
-                for (int i = 0; i < orderedIds.Length; i++)
-                {
-                    var entregable = entregables.FirstOrDefault(e => e.EntregableID == orderedIds[i]);
-                    if (entregable != null)
-                    {
-                        entregable.Orden = i + 1;
-                    }
-                }
-                db.SaveChanges();
-                return Json(new { success = true });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = ex.Message });
-            }
-        }
-
-        // POST: /InductionMaintenance/DeleteEntregable/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Eliminar)]
-        public ActionResult DeleteEntregable(int id)
-        {
-            try
-            {
-                var entregable = db.Ind_Entregables.Find(id);
-                if (entregable == null)
-                {
-                    TempData["Error"] = "Entregable no encontrado.";
-                    return RedirectToAction("Index");
-                }
-
-                var unidad = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == entregable.UnidadID);
-                if (!CarreraScopeHelper.MateriaEnScope(unidad?.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-                {
-                    TempData["Error"] = "No tienes acceso a esta materia.";
-                    return RedirectToAction("Index");
-                }
-
-                // Soft delete
-                entregable.Activo = false;
-                db.SaveChanges();
-
-                TempData["Success"] = $"Entregable '{entregable.Titulo}' desactivado exitosamente.";
-                return RedirectToAction("ManageUnidades", new { id = unidad?.MateriaID });
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al eliminar: {ex.Message}";
-                return RedirectToAction("Index");
             }
         }
 
@@ -670,80 +489,6 @@ namespace induccion_refactorization.Controllers
             }
 
             return RedirectToAction("Index");
-        }
-
-        // POST: /InductionMaintenance/DeleteUnidad/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Eliminar)]
-        public ActionResult DeleteUnidad(int id)
-        {
-            try
-            {
-                var unidad = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == id);
-                if (unidad == null)
-                {
-                    TempData["Error"] = "Unidad no encontrada.";
-                    return RedirectToAction("Index");
-                }
-
-                if (!CarreraScopeHelper.MateriaEnScope(unidad.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-                {
-                    TempData["Error"] = "No tienes acceso a esta materia.";
-                    return RedirectToAction("Index");
-                }
-
-                var materiaId = unidad.MateriaID;
-
-                // Hard delete (or implement soft delete if needed)
-                db.Ind_Unidades.Remove(unidad);
-                db.SaveChanges();
-
-                TempData["Success"] = $"Unidad '{unidad.Nombre}' eliminada exitosamente.";
-                return RedirectToAction("ManageUnidades", new { id = materiaId });
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al eliminar: {ex.Message}";
-                return RedirectToAction("Index");
-            }
-        }
-
-        // POST: /InductionMaintenance/DeleteMaterial/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("GestionContenido", Accion.Eliminar)]
-        public ActionResult DeleteMaterial(int id)
-        {
-            try
-            {
-                var material = db.Ind_Materiales.Find(id);
-                if (material == null)
-                {
-                    TempData["Error"] = "Material no encontrado.";
-                    return RedirectToAction("Index");
-                }
-
-                var unidad = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == material.UnidadID);
-                if (!CarreraScopeHelper.MateriaEnScope(unidad?.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-                {
-                    TempData["Error"] = "No tienes acceso a esta materia.";
-                    return RedirectToAction("Index");
-                }
-
-                var materiaId = unidad?.MateriaID;
-
-                db.Ind_Materiales.Remove(material);
-                db.SaveChanges();
-
-                TempData["Success"] = $"Material '{material.Nombre}' eliminado exitosamente.";
-                return RedirectToAction("ManageUnidades", new { id = materiaId });
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al eliminar: {ex.Message}";
-                return RedirectToAction("Index");
-            }
         }
 
         protected override void Dispose(bool disposing)

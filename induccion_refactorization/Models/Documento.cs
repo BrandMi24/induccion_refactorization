@@ -49,8 +49,10 @@ namespace induccion_refactorization.Models
         public int? UsuarioID { get; set; }
 
         // Navigation Properties
+        // "AspiranteID" apunta directo a Usuarios.UsuarioID — ya no existe una
+        // tabla Aspirantes aparte.
         [ForeignKey("AspiranteID")]
-        public virtual Aspirante Aspirante { get; set; }
+        public virtual Usuario AspiranteUsuario { get; set; }
 
         [ForeignKey("TipoDocumentoID")]
         public virtual TipoDocumento TipoDocumento { get; set; }

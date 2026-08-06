@@ -65,7 +65,7 @@ namespace induccion_refactorization
                     return;
                 }
 
-                SessionHelper.PopulateSession(new HttpSessionStateWrapper(context.Session), user, db);
+                SessionHelper.PopulateSession(new HttpSessionStateWrapper(context.Session), user);
             }
         }
     }

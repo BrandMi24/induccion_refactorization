@@ -1,0 +1,581 @@
+@model induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Carrera>
+@{
+    ViewBag.Title = "Gestión de Carreras";
+    var areasResult = (induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_Area>)ViewBag.AreasResult;
+    var carrerasPorArea = (Dictionary<int, int>)ViewBag.CarrerasPorArea;
+    bool hayAreasParaCrearCarreras = (bool)ViewBag.PuedeCrearCarreras;
+    bool puedeCrear = ViewBag.PuedeCrear;
+    bool puedeEditar = ViewBag.PuedeEditar;
+    bool puedeEliminar = ViewBag.PuedeEliminar;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1"><i class="fas fa-graduation-cap text-primary"></i> Gestión de Carreras</h2>
+        <p class="text-muted mb-0">Bienvenido, <strong>@ViewBag.NombreCompleto</strong></p>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tabAreasBtn" data-bs-toggle="tab" data-bs-target="#tabAreas" type="button" role="tab">
+            <i class="fas fa-layer-group"></i> Áreas
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tabCarrerasBtn" data-bs-toggle="tab" data-bs-target="#tabCarreras" type="button" role="tab">
+            <i class="fas fa-graduation-cap"></i> Carreras
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+
+<div class="tab-pane fade show active" id="tabAreas" role="tabpanel">
+
+<div class="card mb-3">
+    <div class="card-body py-3">
+        @using (Html.BeginForm("GestionCarreras", "Admin", FormMethod.Get))
+        {
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label small text-muted mb-1">Buscar</label>
+                    <input type="text" name="areaSearch" value="@ViewBag.AreaSearch" class="form-control form-control-sm"
+                           placeholder="Nombre del área..." />
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="@Url.Action("GestionCarreras", "Admin")" class="btn btn-sm btn-outline-secondary btn-icon" title="Limpiar filtro">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Áreas Registradas</h5>
+        <div class="d-flex align-items-center gap-3">
+            <small class="text-muted">@areasResult.TotalCount resultado(s)</small>
+            @if (puedeCrear)
+            {
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaArea">
+                    <i class="fas fa-plus"></i> Nueva Área
+                </button>
+            }
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (areasResult.Items.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th>Área</th>
+                            <th class="text-center">Carreras</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var area in areasResult.Items)
+                        {
+                            var totalCarreras = carrerasPorArea.TryGetValue(area.AreaID, out var n) ? n : 0;
+                            <tr>
+                                <td data-label="Área">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="icon-badge icon-badge-sm icon-badge-info">
+                                            <i class="fas fa-layer-group"></i>
+                                        </div>
+                                        <div class="fw-semibold">@area.Nombre</div>
+                                    </div>
+                                </td>
+                                <td class="text-center" data-label="Carreras">
+                                    <span class="badge bg-primary">@totalCarreras</span>
+                                </td>
+                                <td class="text-center" data-label="Estado">
+                                    @if (area.Activo)
+                                    {
+                                        <span class="badge bg-success">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactivo</span>
+                                    }
+                                </td>
+                                <td class="text-end" data-label="Acciones">
+                                    @if (puedeEditar)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
+                                                title="Editar Área"
+                                                data-bs-toggle="modal" data-bs-target="#modalEditarArea"
+                                                data-id="@area.AreaID" data-nombre="@area.Nombre">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    }
+                                    @if (puedeEliminar)
+                                    {
+                                        using (Html.BeginForm("ToggleActivoArea", "Admin", new { id = area.AreaID }, FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-icon @(area.Activo ? "btn-outline-danger" : "btn-outline-success")"
+                                                    title="@(area.Activo ? "Desactivar" : "Reactivar")"
+                                                    onclick="return confirm('¿Está seguro de @(area.Activo ? "desactivar" : "reactivar") esta área?');">
+                                                <i class="fas @(area.Activo ? "fa-toggle-off" : "fa-toggle-on")"></i>
+                                            </button>
+                                        }
+                                        using (Html.BeginForm("DeleteArea", "Admin", new { id = area.AreaID }, FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-icon btn-outline-danger"
+                                                    title="Eliminar permanentemente"
+                                                    onclick="return confirm('¿Está seguro de ELIMINAR PERMANENTEMENTE el área \'@area.Nombre\'? Esta acción no se puede deshacer. Si está en uso, no se podrá eliminar.');">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
+            {
+                PageNumber = areasResult.PageNumber,
+                TotalPages = areasResult.TotalPages,
+                PageSize = areasResult.PageSize,
+                Action = "GestionCarreras",
+                Controller = "Admin",
+                PageParamName = "areaPage",
+                PageSizeParamName = "areaPageSize",
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { areaSearch = ViewBag.AreaSearch, tab = "areas" })
+            })
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon-badge icon-badge-lg icon-badge-info">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <div class="empty-state-title">No hay áreas registradas</div>
+                <p class="mb-0">Cada carrera pertenece a un Área. Crea la primera antes de dar de alta carreras.</p>
+            </div>
+        }
+    </div>
+</div>
+
+</div>
+@* fin tabAreas *@
+
+<div class="tab-pane fade" id="tabCarreras" role="tabpanel">
+
+<div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+    @if (puedeCrear)
+    {
+        if (!hayAreasParaCrearCarreras)
+        {
+            <span class="text-muted small"><i class="fas fa-info-circle"></i> Crea al menos un Área antes de poder crear carreras.</span>
+        }
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaCarrera" @Html.Raw(hayAreasParaCrearCarreras ? "" : "disabled")>
+            <i class="fas fa-plus"></i> Nueva Carrera
+        </button>
+    }
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-3">
+        @using (Html.BeginForm("GestionCarreras", "Admin", FormMethod.Get))
+        {
+            <input type="hidden" name="tab" value="carreras" />
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted mb-1">Buscar</label>
+                    <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm"
+                           placeholder="Nombre o nomenclatura..." />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Área</label>
+                    @Html.DropDownList("filtroAreaId", (SelectList)ViewBag.AreasFiltro, "Todas las áreas", new { @class = "form-select form-select-sm" })
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">Tipo</label>
+                    @Html.DropDownList("tipoCarreraId", (SelectList)ViewBag.TiposCarreraFiltro, "Todos los tipos", new { @class = "form-select form-select-sm" })
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small text-muted mb-1">Estado</label>
+                    @{
+                        var activoFiltro = ViewBag.Activo as bool?;
+                    }
+                    <select name="activo" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        @if (activoFiltro == true)
+                        {
+                            <option value="true" selected="selected">Activo</option>
+                        }
+                        else
+                        {
+                            <option value="true">Activo</option>
+                        }
+                        @if (activoFiltro == false)
+                        {
+                            <option value="false" selected="selected">Inactivo</option>
+                        }
+                        else
+                        {
+                            <option value="false">Inactivo</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="@Url.Action("GestionCarreras", "Admin", new { tab = "carreras" })" class="btn btn-sm btn-outline-secondary btn-icon" title="Limpiar filtros">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Carreras Registradas</h5>
+        <small class="text-muted">@Model.TotalCount resultado(s)</small>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Items.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-clean mb-0">
+                    <thead>
+                        <tr>
+                            @{
+                                var sortRouteValues = new System.Web.Routing.RouteValueDictionary(new
+                                {
+                                    search = ViewBag.Search,
+                                    tipoCarreraId = ViewBag.TipoCarreraId,
+                                    filtroAreaId = ViewBag.FiltroAreaId,
+                                    activo = ViewBag.Activo,
+                                    tab = "carreras"
+                                });
+                            }
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Carrera", SortField = "Nombre", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "GestionCarreras", Controller = "Admin", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Área", SortField = "Area", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "GestionCarreras", Controller = "Admin", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th>
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Tipo", SortField = "Tipo", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "GestionCarreras", Controller = "Admin", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th class="text-center">
+                                @Html.Partial("_SortableHeader", new induccion_refactorization.ViewModels.SortableHeaderViewModel
+                                {
+                                    Label = "Estado", SortField = "Estado", CurrentSortBy = ViewBag.SortBy, CurrentSortDir = ViewBag.SortDir,
+                                    Action = "GestionCarreras", Controller = "Admin", RouteValues = sortRouteValues
+                                })
+                            </th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var carrera in Model.Items)
+                        {
+                            <tr>
+                                <td data-label="Carrera">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="icon-badge icon-badge-sm icon-badge-primary">
+                                            <i class="fas fa-graduation-cap"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold">@carrera.Nombre</div>
+                                            @if (!string.IsNullOrWhiteSpace(carrera.Nomenclatura))
+                                            {
+                                                <small class="text-muted">@carrera.Nomenclatura</small>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                                <td data-label="Área">
+                                    @if (carrera.Area != null)
+                                    {
+                                        <span class="badge bg-info">@carrera.Area.Nombre</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Sin asignar</span>
+                                    }
+                                </td>
+                                <td data-label="Tipo">
+                                    <span class="badge bg-secondary">@(carrera.TipoCarrera?.Nombre)</span>
+                                </td>
+                                <td class="text-center" data-label="Estado">
+                                    @if (carrera.Activo)
+                                    {
+                                        <span class="badge bg-success">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactivo</span>
+                                    }
+                                </td>
+                                <td class="text-end" data-label="Acciones">
+                                    @if (puedeEditar)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-icon"
+                                                title="Editar Carrera"
+                                                data-bs-toggle="modal" data-bs-target="#modalEditarCarrera"
+                                                data-id="@carrera.CarreraID" data-nombre="@carrera.Nombre"
+                                                data-nomenclatura="@carrera.Nomenclatura"
+                                                data-tipo-carrera-id="@carrera.TipoCarreraID"
+                                                data-area-id="@carrera.AreaID">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    }
+                                    @if (puedeEliminar)
+                                    {
+                                        using (Html.BeginForm("ToggleActivoCarrera", "Admin", new { id = carrera.CarreraID }, FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-icon @(carrera.Activo ? "btn-outline-danger" : "btn-outline-success")"
+                                                    title="@(carrera.Activo ? "Desactivar" : "Reactivar")"
+                                                    onclick="return confirm('¿Está seguro de @(carrera.Activo ? "desactivar" : "reactivar") esta carrera?');">
+                                                <i class="fas @(carrera.Activo ? "fa-toggle-off" : "fa-toggle-on")"></i>
+                                            </button>
+                                        }
+                                        using (Html.BeginForm("DeleteCarrera", "Admin", new { id = carrera.CarreraID }, FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-icon btn-outline-danger"
+                                                    title="Eliminar permanentemente"
+                                                    onclick="return confirm('¿Está seguro de ELIMINAR PERMANENTEMENTE la carrera \'@carrera.Nombre\'? Esta acción no se puede deshacer. Si está en uso, no se podrá eliminar.');">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
+            {
+                PageNumber = Model.PageNumber,
+                TotalPages = Model.TotalPages,
+                PageSize = Model.PageSize,
+                Action = "GestionCarreras",
+                Controller = "Admin",
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { search = ViewBag.Search, tipoCarreraId = ViewBag.TipoCarreraId, filtroAreaId = ViewBag.FiltroAreaId, activo = ViewBag.Activo, sortBy = ViewBag.SortBy, sortDir = ViewBag.SortDir, tab = "carreras" })
+            })
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon-badge icon-badge-lg icon-badge-info">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <div class="empty-state-title">No se encontraron carreras</div>
+                <p class="mb-0">Intenta ajustar los filtros de búsqueda, o crea la primera carrera.</p>
+            </div>
+        }
+    </div>
+</div>
+
+</div>
+@* fin tabCarreras *@
+
+</div>
+@* fin tab-content *@
+
+@* ===================== Modal: Nueva Carrera ===================== *@
+<div class="modal fade" id="modalNuevaCarrera" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("CreateCarrera", "Admin", FormMethod.Post, new { @class = "carrera-form" }))
+            {
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-graduation-cap"></i> Nueva Carrera</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="Nombre" class="form-control" required maxlength="100" placeholder="Ej: Ingeniería en Sistemas Computacionales" />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Nomenclatura</label>
+                        <input type="text" name="Nomenclatura" class="form-control" maxlength="20" placeholder="Ej: ISC" />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Área</label>
+                        @Html.DropDownList("AreaID", (SelectList)ViewBag.AreasList, "-- Seleccione un área --", new { @class = "form-select", required = "required" })
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">Tipo de Carrera</label>
+                        @Html.DropDownList("TipoCarreraID", (SelectList)ViewBag.TiposCarreraList, "-- Seleccione un tipo --", new { @class = "form-select" })
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Carrera</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Editar Carrera ===================== *@
+<div class="modal fade" id="modalEditarCarrera" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("EditCarrera", "Admin", FormMethod.Post, new { @class = "carrera-form" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="CarreraID" id="editCarreraId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit"></i> Editar Carrera</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="Nombre" id="editCarreraNombre" class="form-control" required maxlength="100" />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Nomenclatura</label>
+                        <input type="text" name="Nomenclatura" id="editCarreraNomenclatura" class="form-control" maxlength="20" />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Área</label>
+                        @Html.DropDownList("AreaID", (SelectList)ViewBag.AreasList, "-- Seleccione un área --", new { @class = "form-select", id = "editCarreraAreaID", required = "required" })
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">Tipo de Carrera</label>
+                        @Html.DropDownList("TipoCarreraID", (SelectList)ViewBag.TiposCarreraList, new { @class = "form-select", id = "editCarreraTipoCarreraID" })
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Nueva Área ===================== *@
+<div class="modal fade" id="modalNuevaArea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("CreateArea", "Admin", FormMethod.Post, new { @class = "area-form" }))
+            {
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-layer-group"></i> Nueva Área</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="Nombre" class="form-control" required maxlength="150" placeholder="Ej: Tecnologías de la Información" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Área</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ===================== Modal: Editar Área ===================== *@
+<div class="modal fade" id="modalEditarArea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("EditArea", "Admin", FormMethod.Post, new { @class = "area-form" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="AreaID" id="editAreaId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit"></i> Editar Área</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="control-label">Nombre</label>
+                        <input type="text" name="Nombre" id="editAreaNombre" class="form-control" required maxlength="150" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            setTimeout(function () {
+                $('.alert.alert-dismissible').fadeOut('slow');
+            }, 5000);
+
+            document.getElementById('modalEditarCarrera').addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                document.getElementById('editCarreraId').value = button.dataset.id;
+                document.getElementById('editCarreraNombre').value = button.dataset.nombre;
+                document.getElementById('editCarreraNomenclatura').value = button.dataset.nomenclatura || '';
+                $('#editCarreraTipoCarreraID').val(button.dataset.tipoCarreraId);
+                $('#editCarreraAreaID').val(button.dataset.areaId || '');
+            });
+
+            document.getElementById('modalEditarArea').addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                document.getElementById('editAreaId').value = button.dataset.id;
+                document.getElementById('editAreaNombre').value = button.dataset.nombre;
+            });
+
+            $('.carrera-form, .area-form').on('submit', function () {
+                var $btn = $(this).find('button[type="submit"]');
+                $btn.prop('disabled', true);
+                $btn.html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+            });
+
+            // La pestaña "Carreras" queda activa después de filtrar/crear/editar/
+            // eliminar una carrera (todo eso redirige con ?tab=carreras); "Áreas"
+            // es la pestaña por defecto en cualquier otro caso.
+            if (new URLSearchParams(location.search).get('tab') === 'carreras') {
+                bootstrap.Tab.getOrCreateInstance(document.getElementById('tabCarrerasBtn')).show();
+            }
+        });
+    </script>
+}

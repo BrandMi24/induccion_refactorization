@@ -2,7 +2,6 @@
 @{
     ViewBag.Title = "Detalle del Maestro";
     var materiasResult = (induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_Materia>)ViewBag.MateriasResult;
-    var progresosResult = (induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_ProgresoAspirante>)ViewBag.ProgresosResult;
     var entregasResult = (induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_Submision>)ViewBag.EntregasResult;
 }
 
@@ -20,6 +19,22 @@
         <small class="text-muted">@materiasResult.TotalCount resultado(s)</small>
     </div>
     <div class="card-body p-0">
+        <div class="p-3 border-bottom">
+            @using (Html.BeginForm("MaestroDetalle", "Coordinador", FormMethod.Get))
+            {
+                <input type="hidden" name="id" value="@Model.UsuarioID" />
+                <input type="hidden" name="entregaSearch" value="@ViewBag.EntregaSearch" />
+                <input type="hidden" name="entregaPage" value="@entregasResult.PageNumber" />
+                <div class="input-group input-group-sm" style="max-width: 340px;">
+                    <input type="text" name="materiaSearch" value="@ViewBag.MateriaSearch" class="form-control" placeholder="Buscar materia..." />
+                    <button type="submit" class="btn btn-outline-primary"><i class="fas fa-search"></i></button>
+                    @if (!string.IsNullOrEmpty((string)ViewBag.MateriaSearch))
+                    {
+                        <a href="@Url.Action("MaestroDetalle", new { id = Model.UsuarioID, entregaSearch = (string)ViewBag.EntregaSearch, entregaPage = entregasResult.PageNumber })" class="btn btn-outline-secondary" title="Limpiar"><i class="fas fa-times"></i></a>
+                    }
+                </div>
+            }
+        </div>
         @if (materiasResult.Items.Any())
         {
             <div class="table-responsive">
@@ -56,7 +71,7 @@
                 Controller = "Coordinador",
                 PageParamName = "materiaPage",
                 PageSizeParamName = "materiaPageSize",
-                RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, progresoPage = progresosResult.PageNumber, entregaPage = entregasResult.PageNumber })
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, materiaSearch = (string)ViewBag.MateriaSearch, entregaSearch = (string)ViewBag.EntregaSearch, entregaPage = entregasResult.PageNumber })
             })
         }
         else
@@ -65,100 +80,101 @@
                 <div class="icon-badge icon-badge-lg icon-badge-info">
                     <i class="fas fa-book"></i>
                 </div>
-                <div class="empty-state-title">Sin materias compartidas</div>
-                <p class="mb-0">No hay materias visibles para la(s) carrera(s) que comparten.</p>
+                @if (!string.IsNullOrEmpty((string)ViewBag.MateriaSearch))
+                {
+                    <div class="empty-state-title">Sin resultados</div>
+                    <p class="mb-0">Ninguna materia coincide con la búsqueda.</p>
+                }
+                else
+                {
+                    <div class="empty-state-title">Sin materias compartidas</div>
+                    <p class="mb-0">No hay materias visibles para la(s) carrera(s) que comparten.</p>
+                }
             </div>
         }
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-list-check"></i> Unidades Calificadas</h5>
-                <small class="text-muted">@progresosResult.TotalCount resultado(s)</small>
-            </div>
-            <div class="card-body p-0">
-                @if (progresosResult.Items.Any())
-                {
-                    <ul class="list-group list-group-flush">
-                        @foreach (var progreso in progresosResult.Items)
-                        {
-                            <li class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="fw-semibold">@(progreso.Aspirante?.Usuario?.NombreCompleto)</div>
-                                        <small class="text-muted">@(progreso.Ind_Unidad?.Ind_Materia?.Nombre) &middot; @(progreso.Ind_Unidad?.Nombre)</small>
-                                    </div>
-                                    <span class="badge bg-success">@(progreso.Calificacion.HasValue ? progreso.Calificacion.Value.ToString("F2") : "-")</span>
-                                </div>
-                            </li>
-                        }
-                    </ul>
-                    @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
-                    {
-                        PageNumber = progresosResult.PageNumber,
-                        TotalPages = progresosResult.TotalPages,
-                        PageSize = progresosResult.PageSize,
-                        Action = "MaestroDetalle",
-                        Controller = "Coordinador",
-                        PageParamName = "progresoPage",
-                        PageSizeParamName = "progresoPageSize",
-                        RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, materiaPage = materiasResult.PageNumber, entregaPage = entregasResult.PageNumber })
-                    })
-                }
-                else
-                {
-                    <p class="text-muted small p-3 mb-0">Este maestro todavía no ha calificado ninguna unidad.</p>
-                }
-            </div>
-        </div>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-file-upload"></i> Entregas Revisadas</h5>
+        <small class="text-muted">@entregasResult.TotalCount resultado(s)</small>
     </div>
-
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-file-upload"></i> Entregas Calificadas</h5>
-                <small class="text-muted">@entregasResult.TotalCount resultado(s)</small>
-            </div>
-            <div class="card-body p-0">
-                @if (entregasResult.Items.Any())
-                {
-                    <ul class="list-group list-group-flush">
+    <div class="card-body p-0">
+        <div class="p-3 border-bottom">
+            @using (Html.BeginForm("MaestroDetalle", "Coordinador", FormMethod.Get))
+            {
+                <input type="hidden" name="id" value="@Model.UsuarioID" />
+                <input type="hidden" name="materiaSearch" value="@ViewBag.MateriaSearch" />
+                <input type="hidden" name="materiaPage" value="@materiasResult.PageNumber" />
+                <div class="input-group input-group-sm" style="max-width: 340px;">
+                    <input type="text" name="entregaSearch" value="@ViewBag.EntregaSearch" class="form-control" placeholder="Buscar aspirante, materia, unidad o entregable..." />
+                    <button type="submit" class="btn btn-outline-primary"><i class="fas fa-search"></i></button>
+                    @if (!string.IsNullOrEmpty((string)ViewBag.EntregaSearch))
+                    {
+                        <a href="@Url.Action("MaestroDetalle", new { id = Model.UsuarioID, materiaSearch = (string)ViewBag.MateriaSearch, materiaPage = materiasResult.PageNumber })" class="btn btn-outline-secondary" title="Limpiar"><i class="fas fa-times"></i></a>
+                    }
+                </div>
+            }
+        </div>
+        @if (entregasResult.Items.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th>Aspirante</th>
+                            <th>Unidad</th>
+                            <th>Entregable</th>
+                            <th class="text-center">Estado</th>
+                            <th>Fecha de Envío</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         @foreach (var submision in entregasResult.Items)
                         {
-                            <li class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="fw-semibold">@(submision.Aspirante?.Usuario?.NombreCompleto)</div>
-                                        <small class="text-muted">@(submision.Ind_Entregable?.Titulo)</small>
-                                    </div>
+                            <tr>
+                                <td data-label="Aspirante">@(submision.AspiranteUsuario?.NombreCompleto)</td>
+                                <td data-label="Unidad">
+                                    @(submision.Ind_Entregable?.Ind_Unidad?.Nombre)
+                                    <br /><small class="text-muted">@(submision.Ind_Entregable?.Ind_Unidad?.Ind_Materia?.Nombre)</small>
+                                </td>
+                                <td data-label="Entregable">@(submision.Ind_Entregable?.Titulo)</td>
+                                <td class="text-center" data-label="Estado">
                                     @{
                                         var badgeClass = submision.Estado == "Revisado" ? "bg-success" : "bg-danger";
+                                        var estadoTexto = submision.Estado == "Rechazado" ? "Devuelto" : submision.Estado;
                                     }
-                                    <span class="badge @badgeClass">@submision.Estado</span>
-                                </div>
-                            </li>
+                                    <span class="badge @badgeClass">@estadoTexto</span>
+                                </td>
+                                <td data-label="Fecha de Envío">@submision.FechaEnvio.ToString("dd/MM/yyyy HH:mm")</td>
+                            </tr>
                         }
-                    </ul>
-                    @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
-                    {
-                        PageNumber = entregasResult.PageNumber,
-                        TotalPages = entregasResult.TotalPages,
-                        PageSize = entregasResult.PageSize,
-                        Action = "MaestroDetalle",
-                        Controller = "Coordinador",
-                        PageParamName = "entregaPage",
-                        PageSizeParamName = "entregaPageSize",
-                        RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, materiaPage = materiasResult.PageNumber, progresoPage = progresosResult.PageNumber })
-                    })
-                }
-                else
-                {
-                    <p class="text-muted small p-3 mb-0">Este maestro todavía no ha calificado ninguna entrega.</p>
-                }
+                    </tbody>
+                </table>
             </div>
-        </div>
+            @Html.Partial("_Pager", new induccion_refactorization.ViewModels.PagerViewModel
+            {
+                PageNumber = entregasResult.PageNumber,
+                TotalPages = entregasResult.TotalPages,
+                PageSize = entregasResult.PageSize,
+                Action = "MaestroDetalle",
+                Controller = "Coordinador",
+                PageParamName = "entregaPage",
+                PageSizeParamName = "entregaPageSize",
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, materiaSearch = (string)ViewBag.MateriaSearch, entregaSearch = (string)ViewBag.EntregaSearch, materiaPage = materiasResult.PageNumber })
+            })
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty((string)ViewBag.EntregaSearch))
+            {
+                <p class="text-muted small p-3 mb-0">Ninguna entrega coincide con la búsqueda.</p>
+            }
+            else
+            {
+                <p class="text-muted small p-3 mb-0">Este maestro todavía no ha revisado ninguna entrega.</p>
+            }
+        }
     </div>
 </div>

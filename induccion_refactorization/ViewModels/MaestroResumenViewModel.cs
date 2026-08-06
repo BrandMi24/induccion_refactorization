@@ -6,7 +6,6 @@ namespace induccion_refactorization.ViewModels
     {
         public Usuario Usuario { get; set; }
         public int TotalMateriasCompartidas { get; set; }
-        public int UnidadesCalificadasPorEl { get; set; }
         public int EntregasCalificadasPorEl { get; set; }
     }
 }

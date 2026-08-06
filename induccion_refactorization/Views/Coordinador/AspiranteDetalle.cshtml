@@ -1,18 +1,19 @@
-@model induccion_refactorization.Models.Aspirante
+@model induccion_refactorization.Models.Usuario
 @{
     ViewBag.Title = "Detalle del Aspirante";
     var progresosResult = (induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_ProgresoAspirante>)ViewBag.ProgresosResult;
     var submisionesResult = (induccion_refactorization.ViewModels.PagedResult<induccion_refactorization.Models.Ind_Submision>)ViewBag.SubmisionesResult;
+    bool puedeRevisarEntregas = ViewBag.PuedeRevisarEntregas;
 }
 
 <div class="mb-4">
     <a href="@Url.Action("MisAspirantes", "Coordinador")" class="btn btn-outline-secondary btn-sm">
         <i class="fas fa-arrow-left"></i> Volver a Mis Aspirantes
     </a>
-    <h2 class="mb-1"><i class="fas fa-user-graduate text-primary"></i> @(Model.Usuario?.NombreCompleto)</h2>
+    <h2 class="mb-1"><i class="fas fa-user-graduate text-primary"></i> @(Model.NombreCompleto)</h2>
     <p class="text-muted mb-0">
-        Folio: <strong>@(Model.Folio ?? "N/A")</strong> &middot;
-        <i class="fas fa-envelope"></i> @(Model.Usuario?.CorreoElectronico)
+        Folio: <strong>@(Model.NombreUsuario)</strong> &middot;
+        <i class="fas fa-envelope"></i> @(Model.CorreoElectronico)
     </p>
 </div>
 
@@ -22,6 +23,22 @@
         <small class="text-muted">@progresosResult.TotalCount resultado(s)</small>
     </div>
     <div class="card-body p-0">
+        <div class="p-3 border-bottom">
+            @using (Html.BeginForm("AspiranteDetalle", "Coordinador", FormMethod.Get))
+            {
+                <input type="hidden" name="id" value="@Model.UsuarioID" />
+                <input type="hidden" name="submisionSearch" value="@ViewBag.SubmisionSearch" />
+                <input type="hidden" name="submisionPage" value="@submisionesResult.PageNumber" />
+                <div class="input-group input-group-sm" style="max-width: 340px;">
+                    <input type="text" name="progresoSearch" value="@ViewBag.ProgresoSearch" class="form-control" placeholder="Buscar materia, unidad o estado..." />
+                    <button type="submit" class="btn btn-outline-primary"><i class="fas fa-search"></i></button>
+                    @if (!string.IsNullOrEmpty((string)ViewBag.ProgresoSearch))
+                    {
+                        <a href="@Url.Action("AspiranteDetalle", new { id = Model.UsuarioID, submisionSearch = (string)ViewBag.SubmisionSearch, submisionPage = submisionesResult.PageNumber })" class="btn btn-outline-secondary" title="Limpiar"><i class="fas fa-times"></i></a>
+                    }
+                </div>
+            }
+        </div>
         @if (progresosResult.Items.Any())
         {
             <div class="table-responsive">
@@ -31,8 +48,7 @@
                             <th>Materia</th>
                             <th>Unidad</th>
                             <th class="text-center">Estado</th>
-                            <th class="text-center">Calificación</th>
-                            <th class="text-end">Acciones</th>
+                            <th>Fecha Revisada</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -43,22 +59,13 @@
                                 <td data-label="Unidad">@(progreso.Ind_Unidad?.Nombre)</td>
                                 <td class="text-center" data-label="Estado">
                                     @{
-                                        var badgeClass = progreso.Estado == "Calificado" ? "bg-success"
+                                        var badgeClass = progreso.Estado == "Revisado" ? "bg-success"
                                             : progreso.Estado == "Entregado" ? "bg-warning" : "bg-secondary";
                                     }
                                     <span class="badge @badgeClass">@progreso.Estado</span>
                                 </td>
-                                <td class="text-center" data-label="Calificación">
-                                    @(progreso.Calificacion.HasValue ? progreso.Calificacion.Value.ToString("F2") : "-")
-                                </td>
-                                <td class="text-end" data-label="Acciones">
-                                    @if (progreso.Estado == "Entregado")
-                                    {
-                                        <a href="@Url.Action("CalificarProgreso", "Coordinador", new { id = progreso.ProgresoID })"
-                                           class="btn btn-sm btn-primary" title="Calificar">
-                                            <i class="fas fa-star"></i> Calificar
-                                        </a>
-                                    }
+                                <td data-label="Fecha Revisada">
+                                    @(progreso.FechaRevision.HasValue ? progreso.FechaRevision.Value.ToString("dd/MM/yyyy HH:mm") : "—")
                                 </td>
                             </tr>
                         }
@@ -74,7 +81,7 @@
                 Controller = "Coordinador",
                 PageParamName = "progresoPage",
                 PageSizeParamName = "progresoPageSize",
-                RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.AspiranteID, submisionPage = submisionesResult.PageNumber })
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, progresoSearch = (string)ViewBag.ProgresoSearch, submisionSearch = (string)ViewBag.SubmisionSearch, submisionPage = submisionesResult.PageNumber })
             })
         }
         else
@@ -83,8 +90,16 @@
                 <div class="icon-badge icon-badge-lg icon-badge-info">
                     <i class="fas fa-list-check"></i>
                 </div>
-                <div class="empty-state-title">Sin unidades asignadas</div>
-                <p class="mb-0">Este aspirante todavía no tiene unidades asignadas.</p>
+                @if (!string.IsNullOrEmpty((string)ViewBag.ProgresoSearch))
+                {
+                    <div class="empty-state-title">Sin resultados</div>
+                    <p class="mb-0">Ninguna unidad coincide con la búsqueda.</p>
+                }
+                else
+                {
+                    <div class="empty-state-title">Sin unidades asignadas</div>
+                    <p class="mb-0">Este aspirante todavía no tiene unidades asignadas.</p>
+                }
             </div>
         }
     </div>
@@ -96,16 +111,31 @@
         <small class="text-muted">@submisionesResult.TotalCount resultado(s)</small>
     </div>
     <div class="card-body p-0">
+        <div class="p-3 border-bottom">
+            @using (Html.BeginForm("AspiranteDetalle", "Coordinador", FormMethod.Get))
+            {
+                <input type="hidden" name="id" value="@Model.UsuarioID" />
+                <input type="hidden" name="progresoSearch" value="@ViewBag.ProgresoSearch" />
+                <input type="hidden" name="progresoPage" value="@progresosResult.PageNumber" />
+                <div class="input-group input-group-sm" style="max-width: 340px;">
+                    <input type="text" name="submisionSearch" value="@ViewBag.SubmisionSearch" class="form-control" placeholder="Buscar materia, unidad, entregable o estado..." />
+                    <button type="submit" class="btn btn-outline-primary"><i class="fas fa-search"></i></button>
+                    @if (!string.IsNullOrEmpty((string)ViewBag.SubmisionSearch))
+                    {
+                        <a href="@Url.Action("AspiranteDetalle", new { id = Model.UsuarioID, progresoSearch = (string)ViewBag.ProgresoSearch, progresoPage = progresosResult.PageNumber })" class="btn btn-outline-secondary" title="Limpiar"><i class="fas fa-times"></i></a>
+                    }
+                </div>
+            }
+        </div>
         @if (submisionesResult.Items.Any())
         {
             <div class="table-responsive">
                 <table class="table table-hover table-clean mb-0">
                     <thead>
                         <tr>
-                            <th>Materia</th>
+                            <th>Unidad</th>
                             <th>Entregable</th>
                             <th class="text-center">Estado</th>
-                            <th class="text-center">Calificación</th>
                             <th>Fecha de Envío</th>
                             <th class="text-end">Acciones</th>
                         </tr>
@@ -114,17 +144,15 @@
                         @foreach (var submision in submisionesResult.Items)
                         {
                             <tr>
-                                <td data-label="Materia">@(submision.Ind_Entregable?.Ind_Unidad?.Ind_Materia?.Nombre)</td>
+                                <td data-label="Unidad">@(submision.Ind_Entregable?.Ind_Unidad?.Nombre)</td>
                                 <td data-label="Entregable">@(submision.Ind_Entregable?.Titulo)</td>
                                 <td class="text-center" data-label="Estado">
                                     @{
                                         var submisionBadge = submision.Estado == "Revisado" ? "bg-success"
                                             : submision.Estado == "Rechazado" ? "bg-danger" : "bg-warning";
+                                        var submisionEstadoTexto = submision.Estado == "Rechazado" ? "Devuelto" : submision.Estado;
                                     }
-                                    <span class="badge @submisionBadge">@submision.Estado</span>
-                                </td>
-                                <td class="text-center" data-label="Calificación">
-                                    @(submision.Calificacion.HasValue ? submision.Calificacion.Value.ToString("F2") : "-")
+                                    <span class="badge @submisionBadge">@submisionEstadoTexto</span>
                                 </td>
                                 <td data-label="Fecha de Envío">@submision.FechaEnvio.ToString("dd/MM/yyyy HH:mm")</td>
                                 <td class="text-end" data-label="Acciones">
@@ -132,12 +160,17 @@
                                        class="btn btn-sm btn-outline-secondary btn-icon" title="Descargar archivo">
                                         <i class="fas fa-download"></i>
                                     </a>
-                                    @if (submision.Estado == "Pendiente")
+                                    @if (puedeRevisarEntregas && submision.Estado == "Pendiente")
                                     {
-                                        <a href="@Url.Action("Calificar", "Coordinador", new { id = submision.SubmisionID })"
-                                           class="btn btn-sm btn-primary" title="Calificar">
-                                            <i class="fas fa-star"></i> Calificar
-                                        </a>
+                                        <button type="button" class="btn btn-sm btn-primary"
+                                                data-bs-toggle="modal" data-bs-target="#modalRevisarEntrega"
+                                                data-submision-id="@submision.SubmisionID"
+                                                data-unidad="@(submision.Ind_Entregable?.Ind_Unidad?.Nombre)"
+                                                data-entregable="@(submision.Ind_Entregable?.Titulo)"
+                                                data-fecha="@submision.FechaEnvio.ToString("dd/MM/yyyy HH:mm")"
+                                                title="Revisar">
+                                            <i class="fas fa-clipboard-check"></i> Revisar
+                                        </button>
                                     }
                                 </td>
                             </tr>
@@ -154,7 +187,7 @@
                 Controller = "Coordinador",
                 PageParamName = "submisionPage",
                 PageSizeParamName = "submisionPageSize",
-                RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.AspiranteID, progresoPage = progresosResult.PageNumber })
+                RouteValues = new System.Web.Routing.RouteValueDictionary(new { id = Model.UsuarioID, progresoSearch = (string)ViewBag.ProgresoSearch, submisionSearch = (string)ViewBag.SubmisionSearch, progresoPage = progresosResult.PageNumber })
             })
         }
         else
@@ -163,9 +196,74 @@
                 <div class="icon-badge icon-badge-lg icon-badge-info">
                     <i class="fas fa-file-upload"></i>
                 </div>
-                <div class="empty-state-title">Sin entregas todavía</div>
-                <p class="mb-0">Este aspirante no ha subido ningún archivo.</p>
+                @if (!string.IsNullOrEmpty((string)ViewBag.SubmisionSearch))
+                {
+                    <div class="empty-state-title">Sin resultados</div>
+                    <p class="mb-0">Ninguna entrega coincide con la búsqueda.</p>
+                }
+                else
+                {
+                    <div class="empty-state-title">Sin entregas todavía</div>
+                    <p class="mb-0">Este aspirante no ha subido ningún archivo.</p>
+                }
             </div>
         }
     </div>
 </div>
+
+@* ===================== Modal: Revisar Entrega ===================== *@
+<div class="modal fade" id="modalRevisarEntrega" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("Revisar", "Coordinador", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="submisionId" id="revisarSubmisionId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-clipboard-check"></i> Revisar Entrega</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1"><strong>Unidad:</strong> <span id="revisarUnidad"></span></p>
+                    <p class="mb-1"><strong>Entregable:</strong> <span id="revisarEntregable"></span></p>
+                    <p class="mb-3"><strong>Fecha de Envío:</strong> <span id="revisarFecha"></span></p>
+                    <div class="mb-0">
+                        <label class="form-label">Comentarios</label>
+                        <textarea name="comentarioRevisor" id="revisarComentario" class="form-control" rows="3"
+                                  placeholder="Retroalimentación para el aspirante (obligatorio si se devuelve)..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="estado" value="Rechazado" class="btn btn-outline-danger" id="btnRevisarDevolver">
+                        <i class="fas fa-undo"></i> Devolver
+                    </button>
+                    <button type="submit" name="estado" value="Revisado" class="btn btn-success">
+                        <i class="fas fa-check"></i> Está Correcto
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        document.getElementById('modalRevisarEntrega').addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            document.getElementById('revisarSubmisionId').value = button.dataset.submisionId;
+            document.getElementById('revisarUnidad').textContent = button.dataset.unidad || '';
+            document.getElementById('revisarEntregable').textContent = button.dataset.entregable || '';
+            document.getElementById('revisarFecha').textContent = button.dataset.fecha || '';
+            document.getElementById('revisarComentario').value = '';
+        });
+
+        document.getElementById('btnRevisarDevolver').addEventListener('click', function (e) {
+            var comentario = document.getElementById('revisarComentario').value.trim();
+            if (!comentario) {
+                e.preventDefault();
+                alert('El comentario es obligatorio para devolver una entrega.');
+            }
+        });
+    </script>
+}

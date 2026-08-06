@@ -11,8 +11,6 @@ namespace induccion_refactorization.Models
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public Usuario()
         {
-            Aspirantes = new HashSet<Aspirante>();
-            Ind_ProgresoAspirantes = new HashSet<Ind_ProgresoAspirante>();
             Carreras = new HashSet<Carrera>();
         }
 
@@ -55,6 +53,10 @@ namespace induccion_refactorization.Models
 
         public string FotoPerfil { get; set; }
 
+        // Solo se usa para usuarios con rol Aspirante creados por la carga masiva:
+        // el Área se autoasigna de la primera Área activa de su carrera.
+        public int? Ind_AreaID { get; set; }
+
         // Computed property for full name
         [NotMapped]
         public string NombreCompleto
@@ -69,11 +71,8 @@ namespace induccion_refactorization.Models
         [ForeignKey("RolID")]
         public virtual Role Role { get; set; }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Aspirante> Aspirantes { get; set; }
-
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Ind_ProgresoAspirante> Ind_ProgresoAspirantes { get; set; }
+        [ForeignKey("Ind_AreaID")]
+        public virtual Ind_Area Ind_Area { get; set; }
 
         // Carreras a las que está asignado este usuario (Coordinador, Maestro o Aspirante).
         // No aplica para Administrador.

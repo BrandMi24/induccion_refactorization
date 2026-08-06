@@ -221,7 +221,7 @@
 <div class="row g-3 mb-4">
     <div class="col-md-6">
         <div class="card h-100">
-            <div class="card-header">Entregables (Archivos) — Promedio: @(Model.PromedioEntregables?.ToString("F2") ?? "N/A")</div>
+            <div class="card-header">Entregables (Archivos)</div>
             <div class="card-body">
                 <div class="row g-3 text-center">
                     <div class="col-4">
@@ -237,7 +237,7 @@
                     <div class="col-4">
                         <div class="icon-badge icon-badge-danger mx-auto mb-2"><i class="fas fa-times-circle"></i></div>
                         <div class="stat-card-value">@Model.EntregasRechazadas</div>
-                        <div class="stat-card-label">Rechazadas</div>
+                        <div class="stat-card-label">Devueltas</div>
                     </div>
                 </div>
             </div>
@@ -246,7 +246,7 @@
 
     <div class="col-md-6">
         <div class="card h-100">
-            <div class="card-header">Unidades — Promedio: @(Model.PromedioUnidades?.ToString("F2") ?? "N/A")</div>
+            <div class="card-header">Unidades</div>
             <div class="card-body">
                 <div class="row g-3 text-center">
                     <div class="col-4">
@@ -260,9 +260,9 @@
                         <div class="stat-card-label">Entregadas</div>
                     </div>
                     <div class="col-4">
-                        <div class="icon-badge icon-badge-success mx-auto mb-2"><i class="fas fa-star"></i></div>
+                        <div class="icon-badge icon-badge-success mx-auto mb-2"><i class="fas fa-check-circle"></i></div>
                         <div class="stat-card-value">@Model.UnidadesCalificadas</div>
-                        <div class="stat-card-label">Calificadas</div>
+                        <div class="stat-card-label">Revisadas</div>
                     </div>
                 </div>
             </div>

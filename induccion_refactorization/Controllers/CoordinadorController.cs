@@ -4,6 +4,7 @@ using System.Data.Entity;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Web;
 using System.Web.Mvc;
 using induccion_refactorization.Filters;
 using induccion_refactorization.Helpers;
@@ -20,6 +21,59 @@ namespace induccion_refactorization.Controllers
         private int CurrentRolID => (int)(Session["RolID"] ?? 0);
         private int CurrentUsuarioID => (int)(Session["UsuarioID"] ?? 0);
         private List<int> CurrentCarreraIds => CarreraScopeHelper.GetUserCarreraIds(db, CurrentUsuarioID);
+
+        // El nombre de usuario de un Aspirante ES su folio, igual que el resto del
+        // sistema de captación: 10 dígitos rellenados con ceros a la izquierda,
+        // consecutivo al último folio real (los folios reales siempre empiezan con
+        // '0'; los datos de prueba sueltos que hay en la base tienen 10 dígitos
+        // pero sin ese cero inicial, así que se ignoran para este cálculo). Si no
+        // hay ningún folio real todavía, se empieza en 0000000001.
+        private string GenerarSiguienteFolio()
+        {
+            var ultimoFolio = db.Usuarios
+                .Where(u => u.NombreUsuario.Length == 10)
+                .Select(u => u.NombreUsuario)
+                .AsEnumerable()
+                .Where(n => n[0] == '0' && n.All(char.IsDigit))
+                .OrderByDescending(n => n)
+                .FirstOrDefault();
+
+            long siguiente = ultimoFolio != null ? long.Parse(ultimoFolio) + 1 : 1;
+            return siguiente.ToString().PadLeft(10, '0');
+        }
+
+        // El nombre de usuario de un Maestro junta su primer nombre con su
+        // apellido paterno (ej. "Brandon Miguel" + "Hernandez" → "brandon.hernandez"),
+        // sin acentos y en minúsculas, con un sufijo numérico si ya existe otro
+        // usuario con ese mismo handle.
+        private string GenerarNombreUsuarioMaestro(string nombre, string apellidoPaterno)
+        {
+            var primerNombre = QuitarAcentos(nombre).Split(' ')[0];
+            var apellido = QuitarAcentos(apellidoPaterno).Split(' ')[0];
+            var baseNombre = $"{primerNombre}.{apellido}".ToLowerInvariant();
+            baseNombre = new string(baseNombre.Where(c => char.IsLetterOrDigit(c) || c == '.').ToArray());
+            if (string.IsNullOrWhiteSpace(baseNombre) || baseNombre == ".")
+            {
+                baseNombre = "maestro";
+            }
+
+            var candidato = baseNombre;
+            var sufijo = 1;
+            while (db.Usuarios.Any(u => u.NombreUsuario == candidato))
+            {
+                candidato = $"{baseNombre}{sufijo}";
+                sufijo++;
+            }
+            return candidato;
+        }
+
+        private static string QuitarAcentos(string texto)
+        {
+            if (string.IsNullOrEmpty(texto)) { return texto; }
+            var normalizado = texto.Normalize(System.Text.NormalizationForm.FormD);
+            var chars = normalizado.Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark);
+            return new string(chars.ToArray()).Normalize(System.Text.NormalizationForm.FormC);
+        }
 
         // GET: /Coordinador/Index
         public ActionResult Index()
@@ -45,239 +99,22 @@ namespace induccion_refactorization.Controllers
             return View();
         }
 
-        // GET: /Coordinador/RevisarProgreso
-        [RequierePermiso("RevisarUnidades", Accion.Leer)]
-        public ActionResult RevisarProgreso(string search, int? materiaId, string sortBy, string sortDir, int page = 1, int pageSize = 10)
-        {
-            var rolId = CurrentRolID;
-            var carreraIds = CurrentCarreraIds;
+        // Ya no existe un "Marcar Revisado" manual: como toda unidad debe tener
+        // al menos un entregable (regla aplicada en Guardar Cambios de Gestión de
+        // Contenido), la unidad se marca como Revisada automáticamente en cuanto
+        // se aprueban todos sus entregables (ver acción Revisar más abajo).
 
-            var query = db.Ind_ProgresoAspirante
-                .Include(p => p.Aspirante.Usuario)
-                .Include(p => p.Ind_Unidad.Ind_Materia)
-                .Where(p => p.Estado == "Entregado");
-
-            if (CarreraScopeHelper.IsScopedRole(rolId))
-            {
-                query = query.Where(p => p.Ind_Unidad.Ind_Materia.TodasLasCarreras
-                    || p.Ind_Unidad.Ind_Materia.Carreras.Any(c => carreraIds.Contains(c.CarreraID)));
-            }
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var term = search.Trim().ToLower();
-                query = query.Where(p =>
-                    p.Aspirante.Usuario.Nombre.ToLower().Contains(term) ||
-                    p.Aspirante.Usuario.ApellidoPaterno.ToLower().Contains(term) ||
-                    p.Ind_Unidad.Nombre.ToLower().Contains(term));
-            }
-
-            if (materiaId.HasValue)
-            {
-                query = query.Where(p => p.Ind_Unidad.MateriaID == materiaId.Value);
-            }
-
-            bool descending = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
-            switch (sortBy)
-            {
-                case "Aspirante":
-                    query = descending ? query.OrderByDescending(p => p.Aspirante.Usuario.Nombre) : query.OrderBy(p => p.Aspirante.Usuario.Nombre);
-                    break;
-                case "Materia":
-                    query = descending ? query.OrderByDescending(p => p.Ind_Unidad.Ind_Materia.Nombre) : query.OrderBy(p => p.Ind_Unidad.Ind_Materia.Nombre);
-                    break;
-                case "Unidad":
-                    query = descending ? query.OrderByDescending(p => p.Ind_Unidad.Nombre) : query.OrderBy(p => p.Ind_Unidad.Nombre);
-                    break;
-                case "Fecha":
-                    query = descending ? query.OrderByDescending(p => p.FechaEnvio) : query.OrderBy(p => p.FechaEnvio);
-                    break;
-                default:
-                    query = query.OrderBy(p => p.FechaEnvio);
-                    break;
-            }
-
-            var result = PagedResult<Ind_ProgresoAspirante>.Create(query, page, pageSize);
-
-            ViewBag.NombreCompleto = Session["NombreCompleto"];
-            ViewBag.Search = search;
-            ViewBag.MateriaId = materiaId;
-            ViewBag.SortBy = sortBy;
-            ViewBag.SortDir = sortDir;
-            ViewBag.MateriasFiltro = new SelectList(
-                CarreraScopeHelper.ScopeMaterias(db.Ind_Materias.Where(m => m.Activo), rolId, carreraIds),
-                "MateriaID", "Nombre", materiaId);
-
-            return View(result);
-        }
-
-        // GET: /Coordinador/CalificarProgreso/5
-        [RequierePermiso("RevisarUnidades", Accion.Leer)]
-        public ActionResult CalificarProgreso(int? id)
-        {
-            if (id == null)
-            {
-                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-            }
-
-            var progreso = db.Ind_ProgresoAspirante
-                .Include(p => p.Aspirante.Usuario)
-                .Include(p => p.Ind_Unidad.Ind_Materia.Carreras)
-                .FirstOrDefault(p => p.ProgresoID == id);
-
-            if (progreso == null)
-            {
-                return HttpNotFound();
-            }
-
-            if (!CarreraScopeHelper.MateriaEnScope(progreso.Ind_Unidad.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-            {
-                TempData["Error"] = "No tienes acceso a este registro.";
-                return RedirectToAction("RevisarProgreso");
-            }
-
-            return View(progreso);
-        }
-
-        // POST: /Coordinador/CalificarProgreso/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequierePermiso("RevisarUnidades", Accion.Editar)]
-        public ActionResult CalificarProgreso(int progresoId, decimal calificacion, string comentariosEvaluador)
-        {
-            try
-            {
-                var progreso = db.Ind_ProgresoAspirante
-                    .Include(p => p.Ind_Unidad.Ind_Materia.Carreras)
-                    .FirstOrDefault(p => p.ProgresoID == progresoId);
-                if (progreso == null)
-                {
-                    TempData["Error"] = "Registro de progreso no encontrado.";
-                    return RedirectToAction("RevisarProgreso");
-                }
-
-                if (!CarreraScopeHelper.MateriaEnScope(progreso.Ind_Unidad.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-                {
-                    TempData["Error"] = "No tienes acceso a este registro.";
-                    return RedirectToAction("RevisarProgreso");
-                }
-
-                progreso.Estado = "Calificado";
-                progreso.Calificacion = calificacion;
-                progreso.ComentariosEvaluador = comentariosEvaluador;
-                progreso.UsuarioCalificadorID = Session["UsuarioID"] as int?;
-
-                db.SaveChanges();
-
-                TempData["Success"] = "Unidad calificada exitosamente.";
-                return RedirectToAction("RevisarProgreso");
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al calificar: {ex.Message}";
-                return RedirectToAction("CalificarProgreso", new { id = progresoId });
-            }
-        }
-
-        // GET: /Coordinador/RevisarEntregas
-        [RequierePermiso("RevisarEntregables", Accion.Leer)]
-        public ActionResult RevisarEntregas(string search, int? materiaId, string sortBy, string sortDir, int page = 1, int pageSize = 10)
-        {
-            var rolId = CurrentRolID;
-            var carreraIds = CurrentCarreraIds;
-
-            var query = db.Ind_Submisiones
-                .Include(s => s.Aspirante.Usuario)
-                .Include(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia)
-                .Where(s => s.Estado == "Pendiente");
-
-            if (CarreraScopeHelper.IsScopedRole(rolId))
-            {
-                query = query.Where(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia.TodasLasCarreras
-                    || s.Ind_Entregable.Ind_Unidad.Ind_Materia.Carreras.Any(c => carreraIds.Contains(c.CarreraID)));
-            }
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var term = search.Trim().ToLower();
-                query = query.Where(s =>
-                    s.Aspirante.Usuario.Nombre.ToLower().Contains(term) ||
-                    s.Aspirante.Usuario.ApellidoPaterno.ToLower().Contains(term) ||
-                    s.Ind_Entregable.Titulo.ToLower().Contains(term));
-            }
-
-            if (materiaId.HasValue)
-            {
-                query = query.Where(s => s.Ind_Entregable.Ind_Unidad.MateriaID == materiaId.Value);
-            }
-
-            bool descending = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
-            switch (sortBy)
-            {
-                case "Aspirante":
-                    query = descending ? query.OrderByDescending(s => s.Aspirante.Usuario.Nombre) : query.OrderBy(s => s.Aspirante.Usuario.Nombre);
-                    break;
-                case "Materia":
-                    query = descending ? query.OrderByDescending(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia.Nombre) : query.OrderBy(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia.Nombre);
-                    break;
-                case "Entregable":
-                    query = descending ? query.OrderByDescending(s => s.Ind_Entregable.Titulo) : query.OrderBy(s => s.Ind_Entregable.Titulo);
-                    break;
-                case "Fecha":
-                    query = descending ? query.OrderByDescending(s => s.FechaEnvio) : query.OrderBy(s => s.FechaEnvio);
-                    break;
-                default:
-                    query = query.OrderBy(s => s.FechaEnvio);
-                    break;
-            }
-
-            var result = PagedResult<Ind_Submision>.Create(query, page, pageSize);
-
-            ViewBag.NombreCompleto = Session["NombreCompleto"];
-            ViewBag.Search = search;
-            ViewBag.MateriaId = materiaId;
-            ViewBag.SortBy = sortBy;
-            ViewBag.SortDir = sortDir;
-            ViewBag.MateriasFiltro = new SelectList(
-                CarreraScopeHelper.ScopeMaterias(db.Ind_Materias.Where(m => m.Activo), rolId, carreraIds),
-                "MateriaID", "Nombre", materiaId);
-
-            return View(result);
-        }
-
-        // GET: /Coordinador/Calificar/5
-        [RequierePermiso("RevisarEntregables", Accion.Leer)]
-        public ActionResult Calificar(int? id)
-        {
-            if (id == null)
-            {
-                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-            }
-
-            var submision = db.Ind_Submisiones
-                .Include(s => s.Aspirante.Usuario)
-                .Include(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia.Carreras)
-                .FirstOrDefault(s => s.SubmisionID == id);
-
-            if (submision == null)
-            {
-                return HttpNotFound();
-            }
-
-            if (!CarreraScopeHelper.MateriaEnScope(submision.Ind_Entregable.Ind_Unidad.Ind_Materia, CurrentRolID, CurrentCarreraIds))
-            {
-                TempData["Error"] = "No tienes acceso a esta entrega.";
-                return RedirectToAction("RevisarEntregas");
-            }
-
-            return View(submision);
-        }
-
-        // POST: /Coordinador/Calificar/5
+        // POST: /Coordinador/Revisar/5
+        // Ya no existe una página GET dedicada — se revisa desde un modal dentro
+        // de AspiranteDetalle (combina progreso de unidades + entregas en un
+        // mismo lugar).
+        // Ya no se califica con número: solo se aprueba ("Revisado") o se
+        // devuelve para que el aspirante la vuelva a subir ("Rechazado"), con un
+        // comentario explicando por qué en ese segundo caso.
         [HttpPost]
         [ValidateAntiForgeryToken]
         [RequierePermiso("RevisarEntregables", Accion.Editar)]
-        public ActionResult Calificar(int submisionId, string estado, decimal? calificacion, string comentarioRevisor)
+        public ActionResult Revisar(int submisionId, string estado, string comentarioRevisor)
         {
             try
             {
@@ -287,31 +124,24 @@ namespace induccion_refactorization.Controllers
                 if (submision == null)
                 {
                     TempData["Error"] = "Entrega no encontrada.";
-                    return RedirectToAction("RevisarEntregas");
+                    return RedirectToAction("MisAspirantes");
                 }
 
                 if (!CarreraScopeHelper.MateriaEnScope(submision.Ind_Entregable.Ind_Unidad.Ind_Materia, CurrentRolID, CurrentCarreraIds))
                 {
                     TempData["Error"] = "No tienes acceso a esta entrega.";
-                    return RedirectToAction("RevisarEntregas");
+                    return RedirectToAction("MisAspirantes");
                 }
 
                 if (estado != "Revisado" && estado != "Rechazado")
                 {
-                    TempData["Error"] = "Estado de calificación no válido.";
-                    return RedirectToAction("Calificar", new { id = submisionId });
-                }
-
-                if (estado == "Revisado" && !calificacion.HasValue)
-                {
-                    TempData["Error"] = "Debe asignar una calificación para aprobar la entrega.";
-                    return RedirectToAction("Calificar", new { id = submisionId });
+                    TempData["Error"] = "Estado no válido.";
+                    return RedirectToAction("AspiranteDetalle", new { id = submision.AspiranteID });
                 }
 
                 var fechaRevision = DateTime.Now;
 
                 submision.Estado = estado;
-                submision.Calificacion = estado == "Revisado" ? calificacion : null;
                 submision.ComentarioRevisor = comentarioRevisor;
                 submision.UsuarioRevisorID = Session["UsuarioID"] as int?;
                 submision.FechaRevision = fechaRevision;
@@ -331,15 +161,48 @@ namespace induccion_refactorization.Controllers
                     }
                 }
 
+                // Se guarda ya la revisión de la entrega antes de contar cuántos
+                // entregables de la unidad están aprobados — si no, la consulta de
+                // abajo seguiría viendo el estado viejo de ESTA MISMA submisión en
+                // la base de datos (EF no la resuelve desde el cambio en memoria).
                 db.SaveChanges();
 
-                TempData["Success"] = "Entrega calificada exitosamente.";
-                return RedirectToAction("RevisarEntregas");
+                // Como toda unidad debe tener al menos un entregable, la unidad ya
+                // no se marca como revisada a mano: en cuanto TODOS sus entregables
+                // quedan aprobados, se marca sola.
+                if (estado == "Revisado")
+                {
+                    var unidadId = submision.Ind_Entregable.UnidadID;
+                    var entregableIdsUnidad = db.Ind_Entregables
+                        .Where(e => e.UnidadID == unidadId && e.Activo)
+                        .Select(e => e.EntregableID)
+                        .ToList();
+                    var revisados = db.Ind_Submisiones.Count(s =>
+                        s.AspiranteID == submision.AspiranteID &&
+                        entregableIdsUnidad.Contains(s.EntregableID) &&
+                        s.Estado == "Revisado");
+
+                    if (revisados == entregableIdsUnidad.Count)
+                    {
+                        var progreso = db.Ind_ProgresoAspirante
+                            .FirstOrDefault(p => p.AspiranteID == submision.AspiranteID && p.UnidadID == unidadId);
+                        if (progreso != null)
+                        {
+                            progreso.Estado = "Revisado";
+                            progreso.FechaRevision = fechaRevision;
+                            progreso.UsuarioCalificadorID = Session["UsuarioID"] as int?;
+                            db.SaveChanges();
+                        }
+                    }
+                }
+
+                TempData["Success"] = estado == "Revisado" ? "Entrega aprobada exitosamente." : "Entrega devuelta para que se vuelva a subir.";
+                return RedirectToAction("AspiranteDetalle", new { id = submision.AspiranteID });
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Error al calificar: {ex.Message}";
-                return RedirectToAction("Calificar", new { id = submisionId });
+                TempData["Error"] = $"Error al revisar: {ex.Message}";
+                return RedirectToAction("MisAspirantes");
             }
         }
 
@@ -354,13 +217,13 @@ namespace induccion_refactorization.Controllers
             if (submision == null)
             {
                 TempData["Error"] = "Archivo no encontrado.";
-                return RedirectToAction("RevisarEntregas");
+                return RedirectToAction("MisAspirantes");
             }
 
             if (!CarreraScopeHelper.MateriaEnScope(submision.Ind_Entregable.Ind_Unidad.Ind_Materia, CurrentRolID, CurrentCarreraIds))
             {
                 TempData["Error"] = "No tienes acceso a este archivo.";
-                return RedirectToAction("RevisarEntregas");
+                return RedirectToAction("MisAspirantes");
             }
 
             var rutaArchivo = submision.Documento?.RutaAlmacenamiento ?? submision.RutaArchivo;
@@ -371,7 +234,7 @@ namespace induccion_refactorization.Controllers
             if (!System.IO.File.Exists(fullPath))
             {
                 TempData["Error"] = "El archivo ya no está disponible en el servidor.";
-                return RedirectToAction("RevisarEntregas");
+                return RedirectToAction("MisAspirantes");
             }
 
             return File(fullPath, tipoMime, nombreDescarga);
@@ -384,90 +247,280 @@ namespace induccion_refactorization.Controllers
             var rolId = CurrentRolID;
             var carreraIds = CurrentCarreraIds;
 
-            var aspirantesQuery = db.Aspirantes
-                .Include(a => a.Usuario)
-                .Where(a => a.Usuario.Carreras.Any(c => carreraIds.Contains(c.CarreraID)));
+            var aspirantesQuery = db.Usuarios
+                .Where(u => u.RolID == CarreraScopeHelper.RolAspirante && u.Carreras.Any(c => carreraIds.Contains(c.CarreraID)));
 
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var term = search.Trim().ToLower();
                 aspirantesQuery = aspirantesQuery.Where(a =>
-                    a.Usuario.Nombre.ToLower().Contains(term) ||
-                    a.Usuario.ApellidoPaterno.ToLower().Contains(term) ||
-                    (a.Matricula != null && a.Matricula.ToLower().Contains(term)) ||
-                    (a.Folio != null && a.Folio.ToLower().Contains(term)));
+                    a.Nombre.ToLower().Contains(term) ||
+                    a.ApellidoPaterno.ToLower().Contains(term) ||
+                    a.NombreUsuario.ToLower().Contains(term));
             }
 
-            var aspirantesList = aspirantesQuery.OrderBy(a => a.Usuario.Nombre).ToList();
-            var aspiranteIds = aspirantesList.Select(a => a.AspiranteID).ToList();
+            var aspirantesList = aspirantesQuery.ToList();
+            var aspiranteIds = aspirantesList.Select(a => a.UsuarioID).ToList();
 
             var progresosPorAspirante = db.Ind_ProgresoAspirante
+                .Include(p => p.Ind_Unidad.Ind_Materia)
                 .Where(p => aspiranteIds.Contains(p.AspiranteID))
                 .ToList()
                 .GroupBy(p => p.AspiranteID)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
+            var pendientesPorAspirante = db.Ind_Submisiones
+                .Where(s => aspiranteIds.Contains(s.AspiranteID) && s.Estado == "Pendiente")
+                .GroupBy(s => s.AspiranteID)
+                .ToDictionary(g => g.Key, g => g.Count());
+
             var resumenes = aspirantesList.Select(a =>
             {
-                var progresos = progresosPorAspirante.TryGetValue(a.AspiranteID, out var list) ? list : new List<Ind_ProgresoAspirante>();
-                var calificados = progresos.Where(p => p.Calificacion.HasValue).ToList();
+                var progresos = progresosPorAspirante.TryGetValue(a.UsuarioID, out var list) ? list : new List<Ind_ProgresoAspirante>();
+
+                var materias = progresos
+                    .GroupBy(p => p.Ind_Unidad.Ind_Materia)
+                    .Select(g => new MateriaSemaforoViewModel
+                    {
+                        MateriaID = g.Key.MateriaID,
+                        Nombre = g.Key.Nombre,
+                        TotalUnidades = g.Count(),
+                        UnidadesRevisadas = g.Count(p => p.Estado == "Revisado")
+                    })
+                    .OrderBy(m => m.Nombre)
+                    .ToList();
+
                 return new AspiranteResumenViewModel
                 {
                     Aspirante = a,
+                    Materias = materias,
+                    EntregasPendientes = pendientesPorAspirante.TryGetValue(a.UsuarioID, out var cnt) ? cnt : 0,
                     TotalUnidadesAsignadas = progresos.Count,
-                    UnidadesCompletadas = progresos.Count(p => p.Estado == "Calificado"),
-                    PromedioCalificacion = calificados.Any() ? calificados.Average(p => p.Calificacion.Value) : (decimal?)null
+                    UnidadesCompletadas = progresos.Count(p => p.Estado == "Revisado")
                 };
             }).ToList();
 
+            // Los que tienen entregas pendientes por revisar siempre aparecen
+            // primero; el resto (incluyendo los que ya terminaron) queda después.
+            var pendientesPrimero = resumenes.OrderBy(r => r.EntregasPendientes > 0 ? 0 : 1);
+
             bool descending = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            IOrderedEnumerable<AspiranteResumenViewModel> ordenado;
             switch (sortBy)
             {
-                case "Progreso":
-                    resumenes = (descending ? resumenes.OrderByDescending(r => r.PorcentajeProgreso) : resumenes.OrderBy(r => r.PorcentajeProgreso)).ToList();
+                case "Pendientes":
+                    ordenado = descending ? pendientesPrimero.ThenByDescending(r => r.EntregasPendientes) : pendientesPrimero.ThenBy(r => r.EntregasPendientes);
                     break;
-                case "Promedio":
-                    resumenes = (descending ? resumenes.OrderByDescending(r => r.PromedioCalificacion) : resumenes.OrderBy(r => r.PromedioCalificacion)).ToList();
+                case "Progreso":
+                    ordenado = descending ? pendientesPrimero.ThenByDescending(r => r.PorcentajeProgreso) : pendientesPrimero.ThenBy(r => r.PorcentajeProgreso);
                     break;
                 case "Aspirante":
-                    resumenes = (descending ? resumenes.OrderByDescending(r => r.Aspirante.Usuario.NombreCompleto) : resumenes.OrderBy(r => r.Aspirante.Usuario.NombreCompleto)).ToList();
+                    ordenado = descending ? pendientesPrimero.ThenByDescending(r => r.Aspirante.NombreCompleto) : pendientesPrimero.ThenBy(r => r.Aspirante.NombreCompleto);
+                    break;
+                default:
+                    ordenado = pendientesPrimero.ThenBy(r => r.Aspirante.NombreCompleto);
                     break;
             }
 
-            var result = PagedResult<AspiranteResumenViewModel>.Create(resumenes.AsQueryable(), page, pageSize);
+            var result = PagedResult<AspiranteResumenViewModel>.Create(ordenado.AsQueryable(), page, pageSize);
 
             // Estadísticas agregadas sobre todo el alcance (no solo la página actual)
             var todosProgresos = progresosPorAspirante.Values.SelectMany(p => p).ToList();
             ViewBag.TotalAspirantes = aspirantesList.Count;
             ViewBag.PromedioAvance = todosProgresos.Any()
-                ? (int)((todosProgresos.Count(p => p.Estado == "Calificado") * 100.0) / todosProgresos.Count)
+                ? (int)((todosProgresos.Count(p => p.Estado == "Revisado") * 100.0) / todosProgresos.Count)
                 : 0;
-            ViewBag.UnidadesPendientesCalificar = todosProgresos.Count(p => p.Estado == "Entregado");
-
-            var materiaIdsScope = CarreraScopeHelper.ScopeMaterias(db.Ind_Materias.Where(m => m.Activo), rolId, carreraIds).Select(m => m.MateriaID);
-            ViewBag.EntregasPendientesCalificar = db.Ind_Submisiones
-                .Count(s => s.Estado == "Pendiente" && aspiranteIds.Contains(s.AspiranteID)
-                    && materiaIdsScope.Contains(s.Ind_Entregable.Ind_Unidad.MateriaID));
+            ViewBag.EntregasPendientesCalificar = pendientesPorAspirante.Values.Sum();
+            ViewBag.EntregasDevueltas = db.Ind_Submisiones.Count(s => aspiranteIds.Contains(s.AspiranteID) && s.Estado == "Rechazado");
 
             ViewBag.NombreCompleto = Session["NombreCompleto"];
             ViewBag.Search = search;
             ViewBag.SortBy = sortBy;
             ViewBag.SortDir = sortDir;
+            PermissionHelper.AsignarFlagsVista(ViewBag, db, CurrentUsuarioID, rolId, "MisAspirantes");
 
             return View(result);
         }
 
+        // GET: /Coordinador/DescargarPlantillaAspirantes
+        [RequierePermiso("MisAspirantes", Accion.Crear)]
+        public ActionResult DescargarPlantillaAspirantes()
+        {
+            var carrerasScope = db.Carreras.Where(c => c.Activo && CurrentCarreraIds.Contains(c.CarreraID))
+                .OrderBy(c => c.Nombre).Select(c => c.Nombre).ToList();
+            var bytes = ExcelImportHelper.GenerarPlantilla("Aspirantes", carrerasScope);
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "PlantillaAspirantes.xlsx");
+        }
+
+        // GET: /Coordinador/DescargarCredencialesGeneradas
+        // Sirve el Excel de credenciales generado por la carga masiva más reciente
+        // (aspirantes o maestros) de esta sesión — ver ImportarAspirantesMasivo /
+        // ImportarMaestrosMasivo, que lo dejan listo en Session justo antes de
+        // redirigir de vuelta a la página.
+        public ActionResult DescargarCredencialesGeneradas()
+        {
+            var bytes = Session["CredencialesGeneradas"] as byte[];
+            var nombreArchivo = Session["CredencialesGeneradasNombreArchivo"] as string;
+            if (bytes == null || string.IsNullOrEmpty(nombreArchivo))
+            {
+                TempData["Error"] = "No hay credenciales generadas para descargar.";
+                return RedirectToAction("Index", "Coordinador");
+            }
+
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nombreArchivo);
+        }
+
+        // POST: /Coordinador/ImportarAspirantesMasivo
+        // Los aspirantes creados aquí NO tocan la tabla de captación dbo.Aspirantes
+        // (Folio/CURP/etc.) — se insertan exactamente igual que
+        // AdminController.CreateUsuario inserta hoy un usuario con rol Aspirante:
+        // solo una fila en Usuarios + carrera(s) asignada(s). El Área se autoasigna
+        // de la primera carrera válida de la fila.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequierePermiso("MisAspirantes", Accion.Crear)]
+        public ActionResult ImportarAspirantesMasivo(HttpPostedFileBase archivo)
+        {
+            if (archivo == null || archivo.ContentLength == 0)
+            {
+                TempData["Error"] = "Selecciona un archivo Excel (.xlsx) para importar.";
+                return RedirectToAction("MisAspirantes");
+            }
+
+            List<FilaUsuarioImportado> filas;
+            try
+            {
+                filas = ExcelImportHelper.LeerFilas(archivo.InputStream);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"No se pudo leer el archivo: {ex.Message}";
+                return RedirectToAction("MisAspirantes");
+            }
+
+            if (!filas.Any())
+            {
+                TempData["Error"] = "El archivo no tiene filas para importar.";
+                return RedirectToAction("MisAspirantes");
+            }
+
+            // Solo se pueden asignar carreras válidas y dentro del alcance de quien
+            // importa (sus propias carreras a cargo), tal como pidió el usuario.
+            var carreraIds = CurrentCarreraIds;
+            var carrerasScope = db.Carreras.Where(c => c.Activo && carreraIds.Contains(c.CarreraID)).ToList();
+
+            var creados = new List<string>();
+            var errores = new List<string>();
+            var credenciales = new List<CredencialGenerada>();
+
+            foreach (var fila in filas)
+            {
+                var prefijo = $"Fila {fila.NumeroFila}";
+
+                if (string.IsNullOrWhiteSpace(fila.Nombre) || string.IsNullOrWhiteSpace(fila.ApellidoPaterno) ||
+                    string.IsNullOrWhiteSpace(fila.CorreoElectronico))
+                {
+                    errores.Add($"{prefijo}: faltan datos obligatorios (Nombre, ApellidoPaterno, CorreoElectronico).");
+                    continue;
+                }
+
+                if (!fila.NombresCarreras.Any())
+                {
+                    errores.Add($"{prefijo}: no se indicó ninguna carrera.");
+                    continue;
+                }
+
+                if (db.Usuarios.Any(u => u.CorreoElectronico == fila.CorreoElectronico))
+                {
+                    errores.Add($"{prefijo}: ya existe un usuario con ese correo.");
+                    continue;
+                }
+
+                var carrerasFila = carrerasScope
+                    .Where(c => fila.NombresCarreras.Any(n => string.Equals(n, c.Nombre, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+                if (carrerasFila.Count != fila.NombresCarreras.Count)
+                {
+                    var noValidas = fila.NombresCarreras.Where(n => !carrerasFila.Any(c => string.Equals(n, c.Nombre, StringComparison.OrdinalIgnoreCase)));
+                    errores.Add($"{prefijo}: carrera(s) no válida(s) o fuera de tu alcance: {string.Join(", ", noValidas)}.");
+                    continue;
+                }
+
+                // El Área ahora es propiedad directa de la Carrera (la relación se
+                // invirtió: la carrera pertenece a un área, no al revés).
+                var primeraCarrera = carrerasFila.First();
+                if (!primeraCarrera.AreaID.HasValue)
+                {
+                    errores.Add($"{prefijo}: la carrera '{primeraCarrera.Nombre}' todavía no tiene un Área asignada. Pide al Administrador que la asigne desde Gestión de Carreras.");
+                    continue;
+                }
+
+                try
+                {
+                    var contrasenaTemporal = ExcelImportHelper.GenerarContrasenaTemporal();
+                    var usuario = new Usuario
+                    {
+                        Nombre = fila.Nombre,
+                        ApellidoPaterno = fila.ApellidoPaterno,
+                        ApellidoMaterno = fila.ApellidoMaterno,
+                        NombreUsuario = GenerarSiguienteFolio(),
+                        CorreoElectronico = fila.CorreoElectronico,
+                        Contrasena = PasswordHasher.Hash(contrasenaTemporal),
+                        RolID = 4,
+                        Activo = true,
+                        FechaRegistro = DateTime.Now,
+                        Ind_AreaID = primeraCarrera.AreaID
+                    };
+                    foreach (var carrera in carrerasFila)
+                    {
+                        usuario.Carreras.Add(carrera);
+                    }
+                    db.Usuarios.Add(usuario);
+                    db.SaveChanges();
+
+                    creados.Add($"{usuario.NombreUsuario} ({usuario.NombreCompleto}) — contraseña temporal: {contrasenaTemporal}");
+                    credenciales.Add(new CredencialGenerada
+                    {
+                        NombreCompleto = usuario.NombreCompleto,
+                        Usuario = usuario.NombreUsuario,
+                        Correo = usuario.CorreoElectronico,
+                        ContrasenaTemporal = contrasenaTemporal
+                    });
+                }
+                catch (Exception ex)
+                {
+                    errores.Add($"{prefijo}: error al guardar — {ex.Message}");
+                }
+            }
+
+            TempData["ImportCreados"] = creados;
+            TempData["ImportErrores"] = errores;
+            if (creados.Any())
+            {
+                TempData["Success"] = $"Se crearon {creados.Count} de {filas.Count} aspirantes. Revisa el detalle abajo para las contraseñas temporales.";
+                Session["CredencialesGeneradas"] = ExcelImportHelper.GenerarExcelCredenciales("Credenciales", credenciales);
+                Session["CredencialesGeneradasNombreArchivo"] = "CredencialesAspirantes.xlsx";
+                TempData["CredencialesListas"] = true;
+            }
+            if (errores.Any())
+            {
+                TempData["Error"] = $"{errores.Count} fila(s) con errores. Revisa el detalle abajo.";
+            }
+
+            return RedirectToAction("MisAspirantes");
+        }
+
         // GET: /Coordinador/AspiranteDetalle/5
         [RequierePermiso("MisAspirantes", Accion.Leer)]
-        public ActionResult AspiranteDetalle(int id, int progresoPage = 1, int progresoPageSize = 10, int submisionPage = 1, int submisionPageSize = 10)
+        public ActionResult AspiranteDetalle(int id, string progresoSearch, int progresoPage = 1, int progresoPageSize = 10, string submisionSearch = null, int submisionPage = 1, int submisionPageSize = 10)
         {
             var carreraIds = CurrentCarreraIds;
 
-            var aspirante = db.Aspirantes
-                .Include(a => a.Usuario.Carreras)
-                .FirstOrDefault(a => a.AspiranteID == id);
+            var aspirante = db.Usuarios
+                .Include(u => u.Carreras)
+                .FirstOrDefault(u => u.UsuarioID == id && u.RolID == CarreraScopeHelper.RolAspirante);
 
-            if (aspirante == null || !aspirante.Usuario.Carreras.Any(c => carreraIds.Contains(c.CarreraID)))
+            if (aspirante == null || !aspirante.Carreras.Any(c => carreraIds.Contains(c.CarreraID)))
             {
                 TempData["Error"] = "No tienes acceso a este aspirante.";
                 return RedirectToAction("MisAspirantes");
@@ -475,17 +528,41 @@ namespace induccion_refactorization.Controllers
 
             var progresosQuery = db.Ind_ProgresoAspirante
                 .Include(p => p.Ind_Unidad.Ind_Materia)
-                .Where(p => p.AspiranteID == id)
-                .OrderBy(p => p.Ind_Unidad.Ind_Materia.Nombre).ThenBy(p => p.Ind_Unidad.Orden);
+                .Where(p => p.AspiranteID == id);
+
+            if (!string.IsNullOrWhiteSpace(progresoSearch))
+            {
+                progresosQuery = progresosQuery.Where(p =>
+                    p.Ind_Unidad.Ind_Materia.Nombre.Contains(progresoSearch) ||
+                    p.Ind_Unidad.Nombre.Contains(progresoSearch) ||
+                    p.Estado.Contains(progresoSearch));
+            }
+
+            progresosQuery = progresosQuery.OrderBy(p => p.Ind_Unidad.Ind_Materia.Nombre).ThenBy(p => p.Ind_Unidad.Orden);
 
             var submisionesQuery = db.Ind_Submisiones
                 .Include(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia)
-                .Where(s => s.AspiranteID == id)
-                .OrderByDescending(s => s.FechaEnvio);
+                .Where(s => s.AspiranteID == id);
 
-            ViewBag.ProgresosResult = PagedResult<Ind_ProgresoAspirante>.Create(progresosQuery, progresoPage, progresoPageSize);
+            if (!string.IsNullOrWhiteSpace(submisionSearch))
+            {
+                submisionesQuery = submisionesQuery.Where(s =>
+                    s.Ind_Entregable.Ind_Unidad.Ind_Materia.Nombre.Contains(submisionSearch) ||
+                    s.Ind_Entregable.Ind_Unidad.Nombre.Contains(submisionSearch) ||
+                    s.Ind_Entregable.Titulo.Contains(submisionSearch) ||
+                    s.Estado.Contains(submisionSearch));
+            }
+
+            submisionesQuery = submisionesQuery.OrderByDescending(s => s.FechaEnvio);
+
+            var progresosResult = PagedResult<Ind_ProgresoAspirante>.Create(progresosQuery, progresoPage, progresoPageSize);
+
+            ViewBag.ProgresosResult = progresosResult;
             ViewBag.SubmisionesResult = PagedResult<Ind_Submision>.Create(submisionesQuery, submisionPage, submisionPageSize);
+            ViewBag.ProgresoSearch = progresoSearch;
+            ViewBag.SubmisionSearch = submisionSearch;
             ViewBag.NombreCompleto = Session["NombreCompleto"];
+            ViewBag.PuedeRevisarEntregas = PermissionHelper.TieneAcceso(db, CurrentUsuarioID, CurrentRolID, "RevisarEntregables", Accion.Editar);
             return View(aspirante);
         }
 
@@ -512,10 +589,9 @@ namespace induccion_refactorization.Controllers
             // IsScopedRole se evalúa aquí (no dentro del Where) porque EF6/LINQ to
             // Entities no puede traducir una llamada a un método C# arbitrario a SQL.
             bool scoped = CarreraScopeHelper.IsScopedRole(rolId);
-            var aspirantesScope = db.Aspirantes
-                .Include(a => a.Usuario)
-                .Where(a => !scoped || a.Usuario.Carreras.Any(c => carreraIds.Contains(c.CarreraID)))
-                .OrderBy(a => a.Usuario.Nombre)
+            var aspirantesScope = db.Usuarios
+                .Where(a => a.RolID == CarreraScopeHelper.RolAspirante && (!scoped || a.Carreras.Any(c => carreraIds.Contains(c.CarreraID))))
+                .OrderBy(a => a.Nombre)
                 .ToList();
 
             var yaAsignados = new HashSet<int>(db.Ind_ProgresoAspirante
@@ -524,10 +600,10 @@ namespace induccion_refactorization.Controllers
 
             var aspirantes = aspirantesScope.Select(a => new
             {
-                id = a.AspiranteID,
-                nombre = a.Usuario?.NombreCompleto,
-                matricula = a.Matricula,
-                yaAsignado = yaAsignados.Contains(a.AspiranteID)
+                id = a.UsuarioID,
+                nombre = a.NombreCompleto,
+                folio = a.NombreUsuario,
+                yaAsignado = yaAsignados.Contains(a.UsuarioID)
             });
 
             return Json(new { success = true, aspirantes }, JsonRequestBehavior.AllowGet);
@@ -540,24 +616,30 @@ namespace induccion_refactorization.Controllers
         [ValidateAntiForgeryToken]
         [RoleAuthorize(CarreraScopeHelper.RolAdmin, CarreraScopeHelper.RolCoordinador, CarreraScopeHelper.RolMaestro)]
         [RequierePermiso("MisAspirantes", Accion.Crear)]
-        public ActionResult AsignarUnidad(int unidadId, string modo, int[] aspiranteIds, bool reasignar)
+        public ActionResult AsignarUnidad(int[] unidadIds, string modo, int[] aspiranteIds, bool reasignar = false)
         {
             var rolId = CurrentRolID;
             var carreraIds = CurrentCarreraIds;
 
-            var unidad = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras).FirstOrDefault(u => u.UnidadID == unidadId);
-            if (!CarreraScopeHelper.MateriaEnScope(unidad?.Ind_Materia, rolId, carreraIds))
+            unidadIds = (unidadIds ?? new int[0]).Distinct().ToArray();
+            var unidades = db.Ind_Unidades.Include(u => u.Ind_Materia.Carreras)
+                .Where(u => unidadIds.Contains(u.UnidadID)).ToList();
+
+            if (unidades.Count == 0 || unidades.Any(u => !CarreraScopeHelper.MateriaEnScope(u.Ind_Materia, rolId, carreraIds)))
             {
-                TempData["Error"] = "No tienes acceso a esta unidad.";
+                TempData["Error"] = "No tienes acceso a una o más de las unidades seleccionadas.";
                 return RedirectToAction("Index", "InductionMaintenance");
             }
+            // Todas las unidades seleccionadas pertenecen a la misma materia (el
+            // modal solo ofrece las unidades de la materia que se está gestionando).
+            var materiaId = unidades.First().MateriaID;
 
             // IsScopedRole se evalúa aquí (no dentro del Where) porque EF6/LINQ to
             // Entities no puede traducir una llamada a un método C# arbitrario a SQL.
             bool scoped = CarreraScopeHelper.IsScopedRole(rolId);
-            var aspirantesScopeIds = db.Aspirantes
-                .Where(a => !scoped || a.Usuario.Carreras.Any(c => carreraIds.Contains(c.CarreraID)))
-                .Select(a => a.AspiranteID)
+            var aspirantesScopeIds = db.Usuarios
+                .Where(a => a.RolID == CarreraScopeHelper.RolAspirante && (!scoped || a.Carreras.Any(c => carreraIds.Contains(c.CarreraID))))
+                .Select(a => a.UsuarioID)
                 .ToList();
 
             // Sin importar lo que se haya mandado en el POST, el destino siempre se
@@ -569,56 +651,57 @@ namespace induccion_refactorization.Controllers
             if (targetIds.Count == 0)
             {
                 TempData["Error"] = "No se seleccionó ningún aspirante.";
-                return RedirectToAction("ManageUnidades", "InductionMaintenance", new { id = unidad.MateriaID });
+                return RedirectToAction("ManageUnidades", "InductionMaintenance", new { id = materiaId });
             }
 
             try
             {
                 var existentes = db.Ind_ProgresoAspirante
-                    .Where(p => p.UnidadID == unidadId && targetIds.Contains(p.AspiranteID))
+                    .Where(p => unidadIds.Contains(p.UnidadID) && targetIds.Contains(p.AspiranteID))
                     .ToList();
-                var existentesIds = new HashSet<int>(existentes.Select(p => p.AspiranteID));
+                var existentesPorClave = existentes.ToDictionary(p => (p.UnidadID, p.AspiranteID));
 
                 int nuevos = 0, reasignados = 0;
 
-                foreach (var aspiranteId in targetIds)
+                foreach (var unidadId in unidadIds)
                 {
-                    if (existentesIds.Contains(aspiranteId))
+                    foreach (var aspiranteId in targetIds)
                     {
-                        if (reasignar)
+                        if (existentesPorClave.TryGetValue((unidadId, aspiranteId), out var progreso))
                         {
-                            var progreso = existentes.First(p => p.AspiranteID == aspiranteId);
-                            progreso.Estado = "Asignado";
-                            progreso.Calificacion = null;
-                            progreso.ComentariosEvaluador = null;
-                            progreso.FechaEnvio = null;
-                            progreso.FechaAsignacion = DateTime.Now;
-                            progreso.UsuarioCalificadorID = null;
-                            reasignados++;
+                            if (reasignar)
+                            {
+                                progreso.Estado = "Asignado";
+                                progreso.ComentariosEvaluador = null;
+                                progreso.FechaEnvio = null;
+                                progreso.FechaAsignacion = DateTime.Now;
+                                progreso.UsuarioCalificadorID = null;
+                                reasignados++;
+                            }
                         }
-                    }
-                    else
-                    {
-                        db.Ind_ProgresoAspirante.Add(new Ind_ProgresoAspirante
+                        else
                         {
-                            AspiranteID = aspiranteId,
-                            UnidadID = unidadId,
-                            Estado = "Asignado",
-                            FechaAsignacion = DateTime.Now
-                        });
-                        nuevos++;
+                            db.Ind_ProgresoAspirante.Add(new Ind_ProgresoAspirante
+                            {
+                                AspiranteID = aspiranteId,
+                                UnidadID = unidadId,
+                                Estado = "Asignado",
+                                FechaAsignacion = DateTime.Now
+                            });
+                            nuevos++;
+                        }
                     }
                 }
 
                 db.SaveChanges();
 
-                TempData["Success"] = $"Unidad asignada: {nuevos} nuevo(s), {reasignados} reasignado(s).";
-                return RedirectToAction("ManageUnidades", "InductionMaintenance", new { id = unidad.MateriaID });
+                TempData["Success"] = $"Unidad(es) asignada(s): {nuevos} nuevo(s), {reasignados} reasignado(s).";
+                return RedirectToAction("ManageUnidades", "InductionMaintenance", new { id = materiaId });
             }
             catch (Exception ex)
             {
                 TempData["Error"] = $"Error al asignar: {ex.Message}";
-                return RedirectToAction("ManageUnidades", "InductionMaintenance", new { id = unidad.MateriaID });
+                return RedirectToAction("ManageUnidades", "InductionMaintenance", new { id = materiaId });
             }
         }
 
@@ -657,7 +740,6 @@ namespace induccion_refactorization.Controllers
                 {
                     Usuario = m,
                     TotalMateriasCompartidas = materiaIdsCompartidas.Count,
-                    UnidadesCalificadasPorEl = db.Ind_ProgresoAspirante.Count(p => p.UsuarioCalificadorID == m.UsuarioID),
                     EntregasCalificadasPorEl = db.Ind_Submisiones.Count(s => s.UsuarioRevisorID == m.UsuarioID)
                 };
             }).ToList();
@@ -667,9 +749,6 @@ namespace induccion_refactorization.Controllers
             {
                 case "Materias":
                     resumenes = (descending ? resumenes.OrderByDescending(r => r.TotalMateriasCompartidas) : resumenes.OrderBy(r => r.TotalMateriasCompartidas)).ToList();
-                    break;
-                case "Unidades":
-                    resumenes = (descending ? resumenes.OrderByDescending(r => r.UnidadesCalificadasPorEl) : resumenes.OrderBy(r => r.UnidadesCalificadasPorEl)).ToList();
                     break;
                 case "Entregas":
                     resumenes = (descending ? resumenes.OrderByDescending(r => r.EntregasCalificadasPorEl) : resumenes.OrderBy(r => r.EntregasCalificadasPorEl)).ToList();
@@ -684,21 +763,156 @@ namespace induccion_refactorization.Controllers
             // Estadísticas agregadas sobre todo el alcance (no solo la página actual)
             ViewBag.TotalMaestros = maestros.Count;
             ViewBag.TotalMateriasCompartidas = resumenes.Sum(r => r.TotalMateriasCompartidas);
-            ViewBag.TotalUnidadesCalificadas = resumenes.Sum(r => r.UnidadesCalificadasPorEl);
             ViewBag.TotalEntregasCalificadas = resumenes.Sum(r => r.EntregasCalificadasPorEl);
 
             ViewBag.NombreCompleto = Session["NombreCompleto"];
             ViewBag.Search = search;
             ViewBag.SortBy = sortBy;
             ViewBag.SortDir = sortDir;
+            PermissionHelper.AsignarFlagsVista(ViewBag, db, CurrentUsuarioID, CurrentRolID, "MisMaestros");
 
             return View(result);
+        }
+
+        // GET: /Coordinador/DescargarPlantillaMaestros
+        [RoleAuthorize(CarreraScopeHelper.RolCoordinador)]
+        [RequierePermiso("MisMaestros", Accion.Crear)]
+        public ActionResult DescargarPlantillaMaestros()
+        {
+            var carrerasScope = db.Carreras.Where(c => c.Activo && CurrentCarreraIds.Contains(c.CarreraID))
+                .OrderBy(c => c.Nombre).Select(c => c.Nombre).ToList();
+            var bytes = ExcelImportHelper.GenerarPlantilla("Maestros", carrerasScope);
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "PlantillaMaestros.xlsx");
+        }
+
+        // POST: /Coordinador/ImportarMaestrosMasivo
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RoleAuthorize(CarreraScopeHelper.RolCoordinador)]
+        [RequierePermiso("MisMaestros", Accion.Crear)]
+        public ActionResult ImportarMaestrosMasivo(HttpPostedFileBase archivo)
+        {
+            if (archivo == null || archivo.ContentLength == 0)
+            {
+                TempData["Error"] = "Selecciona un archivo Excel (.xlsx) para importar.";
+                return RedirectToAction("MisMaestros");
+            }
+
+            List<FilaUsuarioImportado> filas;
+            try
+            {
+                filas = ExcelImportHelper.LeerFilas(archivo.InputStream);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"No se pudo leer el archivo: {ex.Message}";
+                return RedirectToAction("MisMaestros");
+            }
+
+            if (!filas.Any())
+            {
+                TempData["Error"] = "El archivo no tiene filas para importar.";
+                return RedirectToAction("MisMaestros");
+            }
+
+            var carreraIds = CurrentCarreraIds;
+            var carrerasScope = db.Carreras.Where(c => c.Activo && carreraIds.Contains(c.CarreraID)).ToList();
+
+            var creados = new List<string>();
+            var errores = new List<string>();
+            var credenciales = new List<CredencialGenerada>();
+
+            foreach (var fila in filas)
+            {
+                var prefijo = $"Fila {fila.NumeroFila}";
+
+                if (string.IsNullOrWhiteSpace(fila.Nombre) || string.IsNullOrWhiteSpace(fila.ApellidoPaterno) ||
+                    string.IsNullOrWhiteSpace(fila.CorreoElectronico))
+                {
+                    errores.Add($"{prefijo}: faltan datos obligatorios (Nombre, ApellidoPaterno, CorreoElectronico).");
+                    continue;
+                }
+
+                if (!fila.NombresCarreras.Any())
+                {
+                    errores.Add($"{prefijo}: no se indicó ninguna carrera.");
+                    continue;
+                }
+
+                if (db.Usuarios.Any(u => u.CorreoElectronico == fila.CorreoElectronico))
+                {
+                    errores.Add($"{prefijo}: ya existe un usuario con ese correo.");
+                    continue;
+                }
+
+                var carrerasFila = carrerasScope
+                    .Where(c => fila.NombresCarreras.Any(n => string.Equals(n, c.Nombre, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+                if (carrerasFila.Count != fila.NombresCarreras.Count)
+                {
+                    var noValidas = fila.NombresCarreras.Where(n => !carrerasFila.Any(c => string.Equals(n, c.Nombre, StringComparison.OrdinalIgnoreCase)));
+                    errores.Add($"{prefijo}: carrera(s) no válida(s) o fuera de tu alcance: {string.Join(", ", noValidas)}.");
+                    continue;
+                }
+
+                try
+                {
+                    var contrasenaTemporal = ExcelImportHelper.GenerarContrasenaTemporal();
+                    var usuario = new Usuario
+                    {
+                        Nombre = fila.Nombre,
+                        ApellidoPaterno = fila.ApellidoPaterno,
+                        ApellidoMaterno = fila.ApellidoMaterno,
+                        NombreUsuario = GenerarNombreUsuarioMaestro(fila.Nombre, fila.ApellidoPaterno),
+                        CorreoElectronico = fila.CorreoElectronico,
+                        Contrasena = PasswordHasher.Hash(contrasenaTemporal),
+                        RolID = CarreraScopeHelper.RolMaestro,
+                        Activo = true,
+                        FechaRegistro = DateTime.Now
+                    };
+                    foreach (var carrera in carrerasFila)
+                    {
+                        usuario.Carreras.Add(carrera);
+                    }
+                    db.Usuarios.Add(usuario);
+                    db.SaveChanges();
+
+                    creados.Add($"{usuario.NombreUsuario} ({usuario.NombreCompleto}) — contraseña temporal: {contrasenaTemporal}");
+                    credenciales.Add(new CredencialGenerada
+                    {
+                        NombreCompleto = usuario.NombreCompleto,
+                        Usuario = usuario.NombreUsuario,
+                        Correo = usuario.CorreoElectronico,
+                        ContrasenaTemporal = contrasenaTemporal
+                    });
+                }
+                catch (Exception ex)
+                {
+                    errores.Add($"{prefijo}: error al guardar — {ex.Message}");
+                }
+            }
+
+            TempData["ImportCreados"] = creados;
+            TempData["ImportErrores"] = errores;
+            if (creados.Any())
+            {
+                TempData["Success"] = $"Se crearon {creados.Count} de {filas.Count} maestros. Revisa el detalle abajo para las contraseñas temporales.";
+                Session["CredencialesGeneradas"] = ExcelImportHelper.GenerarExcelCredenciales("Credenciales", credenciales);
+                Session["CredencialesGeneradasNombreArchivo"] = "CredencialesMaestros.xlsx";
+                TempData["CredencialesListas"] = true;
+            }
+            if (errores.Any())
+            {
+                TempData["Error"] = $"{errores.Count} fila(s) con errores. Revisa el detalle abajo.";
+            }
+
+            return RedirectToAction("MisMaestros");
         }
 
         // GET: /Coordinador/MaestroDetalle/5
         [RoleAuthorize(CarreraScopeHelper.RolCoordinador)]
         [RequierePermiso("MisMaestros", Accion.Leer)]
-        public ActionResult MaestroDetalle(int id, int materiaPage = 1, int materiaPageSize = 10, int progresoPage = 1, int progresoPageSize = 10, int entregaPage = 1, int entregaPageSize = 10)
+        public ActionResult MaestroDetalle(int id, string materiaSearch, int materiaPage = 1, int materiaPageSize = 10, string entregaSearch = null, int entregaPage = 1, int entregaPageSize = 10)
         {
             var carreraIds = CurrentCarreraIds;
 
@@ -716,24 +930,37 @@ namespace induccion_refactorization.Controllers
 
             var materiasQuery = CarreraScopeHelper.ScopeMaterias(
                     db.Ind_Materias.Include(m => m.Ind_Unidades.Select(u => u.Ind_Entregables)).Where(m => m.Activo),
-                    CarreraScopeHelper.RolMaestro, carrerasCompartidas)
-                .OrderBy(m => m.Nombre);
+                    CarreraScopeHelper.RolMaestro, carrerasCompartidas);
 
-            var progresosQuery = db.Ind_ProgresoAspirante
-                .Include(p => p.Aspirante.Usuario)
-                .Include(p => p.Ind_Unidad.Ind_Materia)
-                .Where(p => p.UsuarioCalificadorID == id)
-                .OrderByDescending(p => p.ProgresoID);
+            if (!string.IsNullOrWhiteSpace(materiaSearch))
+            {
+                materiasQuery = materiasQuery.Where(m => m.Nombre.Contains(materiaSearch));
+            }
+
+            materiasQuery = materiasQuery.OrderBy(m => m.Nombre);
 
             var entregasQuery = db.Ind_Submisiones
-                .Include(s => s.Aspirante.Usuario)
-                .Include(s => s.Ind_Entregable)
-                .Where(s => s.UsuarioRevisorID == id)
-                .OrderByDescending(s => s.SubmisionID);
+                .Include(s => s.AspiranteUsuario)
+                .Include(s => s.Ind_Entregable.Ind_Unidad.Ind_Materia)
+                .Where(s => s.UsuarioRevisorID == id);
+
+            if (!string.IsNullOrWhiteSpace(entregaSearch))
+            {
+                entregasQuery = entregasQuery.Where(s =>
+                    s.AspiranteUsuario.Nombre.Contains(entregaSearch) ||
+                    s.AspiranteUsuario.ApellidoPaterno.Contains(entregaSearch) ||
+                    s.AspiranteUsuario.ApellidoMaterno.Contains(entregaSearch) ||
+                    s.Ind_Entregable.Ind_Unidad.Ind_Materia.Nombre.Contains(entregaSearch) ||
+                    s.Ind_Entregable.Ind_Unidad.Nombre.Contains(entregaSearch) ||
+                    s.Ind_Entregable.Titulo.Contains(entregaSearch));
+            }
+
+            entregasQuery = entregasQuery.OrderByDescending(s => s.SubmisionID);
 
             ViewBag.MateriasResult = PagedResult<Ind_Materia>.Create(materiasQuery, materiaPage, materiaPageSize);
-            ViewBag.ProgresosResult = PagedResult<Ind_ProgresoAspirante>.Create(progresosQuery, progresoPage, progresoPageSize);
             ViewBag.EntregasResult = PagedResult<Ind_Submision>.Create(entregasQuery, entregaPage, entregaPageSize);
+            ViewBag.MateriaSearch = materiaSearch;
+            ViewBag.EntregaSearch = entregaSearch;
             ViewBag.NombreCompleto = Session["NombreCompleto"];
             return View(maestro);
         }

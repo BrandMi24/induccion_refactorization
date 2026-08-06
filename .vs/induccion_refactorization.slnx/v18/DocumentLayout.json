@@ -3,24 +3,32 @@
   "WorkspaceRootPath": "C:\\dev\\induccion_refactorization\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|c:\\dev\\induccion_refactorization\\induccion_refactorization\\web.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
-      "RelativeMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|solutionrelative:induccion_refactorization\\web.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+      "AbsoluteMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|c:\\dev\\induccion_refactorization\\induccion_refactorization\\helpers\\fileuploadvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|solutionrelative:induccion_refactorization\\helpers\\fileuploadvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|C:\\dev\\induccion_refactorization\\induccion_refactorization\\models\\usuario.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|solutionrelative:induccion_refactorization\\models\\usuario.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|C:\\dev\\induccion_refactorization\\induccion_refactorization\\helpers\\excelimporthelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|solutionrelative:induccion_refactorization\\helpers\\excelimporthelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|C:\\dev\\induccion_refactorization\\induccion_refactorization\\web.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|solutionrelative:induccion_refactorization\\web.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|C:\\dev\\induccion_refactorization\\induccion_refactorization\\controllers\\aspirantecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|solutionrelative:induccion_refactorization\\controllers\\aspirantecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|C:\\dev\\induccion_refactorization\\induccion_refactorization\\models\\aspirante.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|solutionrelative:induccion_refactorization\\models\\aspirante.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|C:\\dev\\induccion_refactorization\\induccion_refactorization\\models\\ind_unidad.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|solutionrelative:induccion_refactorization\\models\\ind_unidad.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|C:\\dev\\induccion_refactorization\\induccion_refactorization\\models\\usuario.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{06D118DF-5308-4575-80D4-1DF47A237AC4}|induccion_refactorization\\induccion_refactorization.csproj|solutionrelative:induccion_refactorization\\models\\usuario.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\dev\\induccion_refactorization\\induccion_refactorization\\Models\\Aspirante.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:induccion_refactorization\\Models\\Aspirante.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -35,12 +43,37 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "FileUploadValidator.cs",
+              "DocumentMoniker": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Helpers\\FileUploadValidator.cs",
+              "RelativeDocumentMoniker": "induccion_refactorization\\Helpers\\FileUploadValidator.cs",
+              "ToolTip": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Helpers\\FileUploadValidator.cs",
+              "RelativeToolTip": "induccion_refactorization\\Helpers\\FileUploadValidator.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAA4AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-08-06T08:07:04.361Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ExcelImportHelper.cs",
+              "DocumentMoniker": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Helpers\\ExcelImportHelper.cs",
+              "RelativeDocumentMoniker": "induccion_refactorization\\Helpers\\ExcelImportHelper.cs",
+              "ToolTip": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Helpers\\ExcelImportHelper.cs",
+              "RelativeToolTip": "induccion_refactorization\\Helpers\\ExcelImportHelper.cs",
+              "ViewState": "AgIAAHwAAAAAAAAAAAAYwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-08-06T08:06:29.91Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "Web.config",
               "DocumentMoniker": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Web.config",
               "RelativeDocumentMoniker": "induccion_refactorization\\Web.config",
               "ToolTip": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Web.config",
               "RelativeToolTip": "induccion_refactorization\\Web.config",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAFAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000601|",
               "WhenOpened": "2026-07-16T20:44:36.634Z",
               "EditorCaption": ""
@@ -59,31 +92,31 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 6,
               "Title": "Aspirante.cs",
               "DocumentMoniker": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Models\\Aspirante.cs",
               "RelativeDocumentMoniker": "induccion_refactorization\\Models\\Aspirante.cs",
               "ToolTip": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Models\\Aspirante.cs",
               "RelativeToolTip": "induccion_refactorization\\Models\\Aspirante.cs",
-              "ViewState": "AgIAAEkAAAAAAAAAAAAhwFwAAAAjAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAFwAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-16T17:50:14.001Z"
+              "WhenOpened": "2026-08-06T07:17:36.201Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "AspiranteController.cs",
               "DocumentMoniker": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Controllers\\AspiranteController.cs",
               "RelativeDocumentMoniker": "induccion_refactorization\\Controllers\\AspiranteController.cs",
               "ToolTip": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Controllers\\AspiranteController.cs",
               "RelativeToolTip": "induccion_refactorization\\Controllers\\AspiranteController.cs",
-              "ViewState": "AgIAAFAAAAAAAAAAAAAhwF4AAAA7AAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGEAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-07-16T17:50:14.001Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 5,
               "Title": "Usuario.cs",
               "DocumentMoniker": "C:\\dev\\induccion_refactorization\\induccion_refactorization\\Models\\Usuario.cs",
               "RelativeDocumentMoniker": "induccion_refactorization\\Models\\Usuario.cs",

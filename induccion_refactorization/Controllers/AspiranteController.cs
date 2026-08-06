@@ -55,27 +55,47 @@ namespace induccion_refactorization.Controllers
 
         private List<MateriaProgresoViewModel> GetMateriasProgreso(int aspiranteId)
         {
-            var aspirante = db.Aspirantes
-                .Include(a => a.Ind_ProgresoAspirantes.Select(p => p.Ind_Unidad.Ind_Materia))
-                .FirstOrDefault(a => a.AspiranteID == aspiranteId);
+            var progresos = db.Ind_ProgresoAspirante
+                .Include(p => p.Ind_Unidad.Ind_Materia)
+                .Where(p => p.AspiranteID == aspiranteId)
+                .ToList();
 
-            if (aspirante == null)
-            {
-                return new List<MateriaProgresoViewModel>();
-            }
+            // MateriaID de cada entregable con un devuelto pendiente de resubir, para
+            // marcar esos cursos con "acción requerida" en el panel principal.
+            var materiaIdsConDevueltos = new HashSet<int>(db.Ind_Submisiones
+                .Where(s => s.AspiranteID == aspiranteId && s.Estado == "Rechazado")
+                .Select(s => s.Ind_Entregable.Ind_Unidad.MateriaID));
 
-            return aspirante.Ind_ProgresoAspirantes
+            // MateriaID de las materias cuya pantalla de felicitación ya fue vista
+            // (y descartada permanentemente) por este aspirante.
+            var materiaIdsFelicitacionVista = new HashSet<int>(db.Ind_FelicitacionesVistas
+                .Where(f => f.AspiranteID == aspiranteId)
+                .Select(f => f.MateriaID));
+
+            return progresos
                 .Where(p => p.Ind_Unidad != null && p.Ind_Unidad.Ind_Materia != null)
                 .GroupBy(p => p.Ind_Unidad.Ind_Materia)
-                .Select(g => new MateriaProgresoViewModel
+                .Select(g =>
                 {
-                    Materia = g.Key,
-                    TotalUnidades = g.Count(),
-                    UnidadesCompletadas = g.Count(p => p.Estado == "Calificado"),
-                    PromedioCalificacion = g.Where(p => p.Calificacion.HasValue).Average(p => p.Calificacion),
-                    ProgresoAspirantes = g.ToList()
+                    var totalUnidades = g.Count();
+                    var unidadesCompletadas = g.Count(p => p.Estado == "Revisado");
+                    var completada = totalUnidades > 0 && unidadesCompletadas == totalUnidades;
+                    return new MateriaProgresoViewModel
+                    {
+                        Materia = g.Key,
+                        TotalUnidades = totalUnidades,
+                        UnidadesCompletadas = unidadesCompletadas,
+                        ProgresoAspirantes = g.ToList(),
+                        TieneAccionRequerida = materiaIdsConDevueltos.Contains(g.Key.MateriaID),
+                        TieneFelicitacionPendiente = completada && !materiaIdsFelicitacionVista.Contains(g.Key.MateriaID)
+                    };
                 })
-                .OrderBy(m => m.Materia.Nombre)
+                // Primero los cursos que necesitan atención (acción requerida), luego
+                // los que se acaban de completar y todavía no se les mostró/descartó
+                // la pantalla de felicitación, y por último el resto por nombre.
+                .OrderByDescending(m => m.TieneAccionRequerida)
+                .ThenByDescending(m => m.TieneFelicitacionPendiente)
+                .ThenBy(m => m.Materia.Nombre)
                 .ToList();
         }
 
@@ -131,6 +151,8 @@ namespace induccion_refactorization.Controllers
                 ViewBag.MateriaNombre = materia.Nombre;
                 ViewBag.MateriaDescripcion = materia.Descripcion;
                 ViewBag.AspiranteID = aspiranteId;
+                ViewBag.FelicitacionYaVista = db.Ind_FelicitacionesVistas
+                    .Any(f => f.AspiranteID == aspiranteId && f.MateriaID == id);
 
                 return View(materia);
             }
@@ -167,7 +189,7 @@ namespace induccion_refactorization.Controllers
 
                 if (progreso.Estado != "Asignado")
                 {
-                    TempData["Error"] = "Esta unidad ya fue entregada o calificada.";
+                    TempData["Error"] = "Esta unidad ya fue entregada o revisada.";
                     return RedirectToAction("MateriaDetails", new { id = materiaId });
                 }
 
@@ -180,6 +202,31 @@ namespace induccion_refactorization.Controllers
             catch (Exception ex)
             {
                 TempData["Error"] = $"Error al actualizar: {ex.Message}";
+            }
+
+            return RedirectToAction("MateriaDetails", new { id = materiaId });
+        }
+
+        // POST: /Aspirante/MarcarFelicitacionVista/5
+        // Descarta permanentemente la pantalla de "¡Felicidades!" de una materia
+        // para que no vuelva a aparecer cada vez que el aspirante visite su
+        // contenido (solo se llama cuando marcan la casilla "No volver a mostrar").
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequierePermiso("MiEspacio", Accion.Editar)]
+        public ActionResult MarcarFelicitacionVista(int materiaId, bool noMostrarDeNuevo = false)
+        {
+            int? aspiranteId = Session["AspiranteID"] as int?;
+            if (aspiranteId != null && noMostrarDeNuevo &&
+                !db.Ind_FelicitacionesVistas.Any(f => f.AspiranteID == aspiranteId && f.MateriaID == materiaId))
+            {
+                db.Ind_FelicitacionesVistas.Add(new Ind_FelicitacionVista
+                {
+                    AspiranteID = aspiranteId.Value,
+                    MateriaID = materiaId,
+                    FechaVista = DateTime.Now
+                });
+                db.SaveChanges();
             }
 
             return RedirectToAction("MateriaDetails", new { id = materiaId });
@@ -274,7 +321,6 @@ namespace induccion_refactorization.Controllers
                     submision.RutaArchivo = rutaRelativa;
                     submision.FechaEnvio = DateTime.Now;
                     submision.Estado = "Pendiente";
-                    submision.Calificacion = null;
                     submision.ComentarioRevisor = null;
                     submision.UsuarioRevisorID = null;
                     submision.FechaRevision = null;
@@ -283,6 +329,30 @@ namespace induccion_refactorization.Controllers
                 submision.Documento = documento;
 
                 db.SaveChanges();
+
+                // La unidad pasa a "Entregado" sola en cuanto el aspirante ya subió
+                // archivo para TODOS sus entregables — ya no existe un botón de
+                // "Marcar como Entregado" aparte, porque ahora toda unidad requiere
+                // al menos un entregable.
+                var unidadId = entregable.UnidadID;
+                var entregableIdsUnidad = db.Ind_Entregables
+                    .Where(e => e.UnidadID == unidadId && e.Activo)
+                    .Select(e => e.EntregableID)
+                    .ToList();
+                var todosEnviados = entregableIdsUnidad.All(eid =>
+                    db.Ind_Submisiones.Any(s => s.AspiranteID == aspiranteId && s.EntregableID == eid));
+
+                if (todosEnviados)
+                {
+                    var progreso = db.Ind_ProgresoAspirante
+                        .FirstOrDefault(p => p.AspiranteID == aspiranteId && p.UnidadID == unidadId);
+                    if (progreso != null && progreso.Estado == "Asignado")
+                    {
+                        progreso.Estado = "Entregado";
+                        progreso.FechaEnvio = DateTime.Now;
+                        db.SaveChanges();
+                    }
+                }
 
                 TempData["Success"] = $"Archivo para '{entregable.Titulo}' enviado exitosamente.";
 

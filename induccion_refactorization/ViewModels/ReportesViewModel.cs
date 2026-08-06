@@ -21,13 +21,11 @@ namespace induccion_refactorization.ViewModels
         public int EntregasPendientes { get; set; }
         public int EntregasRevisadas { get; set; }
         public int EntregasRechazadas { get; set; }
-        public decimal? PromedioEntregables { get; set; }
 
         // Unidades (Ind_ProgresoAspirante)
         public int UnidadesAsignadas { get; set; }
         public int UnidadesEntregadas { get; set; }
         public int UnidadesCalificadas { get; set; }
-        public decimal? PromedioUnidades { get; set; }
 
         public List<MateriaProgresoResumen> MateriasConProgreso { get; set; } = new List<MateriaProgresoResumen>();
     }

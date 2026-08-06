@@ -39,7 +39,7 @@
             </div>
             <div>
                 <div class="stat-card-value">@ViewBag.RechazadasCount</div>
-                <div class="stat-card-label">Entregas Rechazadas</div>
+                <div class="stat-card-label">Entregas Devueltas</div>
             </div>
         </div>
     </div>
@@ -72,45 +72,15 @@
 
     <div class="col-md-6">
         <div class="action-card">
-            <div class="icon-badge icon-badge-lg icon-badge-warning">
-                <i class="fas fa-clipboard-check"></i>
-            </div>
-            <h5 class="action-card-title">Calificar Entregables</h5>
-            <p class="action-card-text">Revisar archivos entregados por aspirantes y asignar calificaciones.</p>
-            @if ((int)(ViewBag.PendientesCount ?? 0) > 0)
-            {
-                <span class="badge bg-danger align-self-start mb-1">@ViewBag.PendientesCount pendientes</span>
-            }
-            <a href="@Url.Action("RevisarEntregas", "Coordinador")" class="btn btn-warning">
-                Ir a Revisión <i class="fas fa-arrow-right ms-1"></i>
-            </a>
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="action-card">
-            <div class="icon-badge icon-badge-lg icon-badge-info">
-                <i class="fas fa-list-check"></i>
-            </div>
-            <h5 class="action-card-title">Calificar Unidades</h5>
-            <p class="action-card-text">Revisar unidades marcadas como entregadas por los aspirantes.</p>
-            @if ((int)(ViewBag.ProgresoPendienteCount ?? 0) > 0)
-            {
-                <span class="badge bg-danger align-self-start mb-1">@ViewBag.ProgresoPendienteCount pendientes</span>
-            }
-            <a href="@Url.Action("RevisarProgreso", "Coordinador")" class="btn btn-info text-white">
-                Ir a Revisión <i class="fas fa-arrow-right ms-1"></i>
-            </a>
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="action-card">
             <div class="icon-badge icon-badge-lg icon-badge-success">
                 <i class="fas fa-user-graduate"></i>
             </div>
             <h5 class="action-card-title">Mis Aspirantes</h5>
-            <p class="action-card-text">Ver a tus aspirantes, su avance, y asignar o reasignar unidades.</p>
+            <p class="action-card-text">Ver a tus aspirantes, su avance, y revisar o asignar unidades.</p>
+            @if ((int)(ViewBag.PendientesCount ?? 0) > 0)
+            {
+                <span class="badge bg-danger align-self-start mb-1">@ViewBag.PendientesCount pendientes</span>
+            }
             <a href="@Url.Action("MisAspirantes", "Coordinador")" class="btn btn-success">
                 Ir a Aspirantes <i class="fas fa-arrow-right ms-1"></i>
             </a>
@@ -119,7 +89,7 @@
 
     @if (rolIdSesion == 3)
     {
-        <div class="col-md-6 offset-md-3">
+        <div class="col-md-6">
             <div class="action-card">
                 <div class="icon-badge icon-badge-lg icon-badge-secondary">
                     <i class="fas fa-chalkboard-teacher"></i>

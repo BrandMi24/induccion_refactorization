@@ -113,7 +113,7 @@ namespace induccion_refactorization.Controllers
                 Response.Cookies.Add(authCookie);
 
                 // Store core session data
-                SessionHelper.PopulateSession(Session, user, db);
+                SessionHelper.PopulateSession(Session, user);
 
                 // Record last access time
                 user.UltimoAcceso = DateTime.Now;
@@ -188,19 +188,14 @@ namespace induccion_refactorization.Controllers
                     return RedirectToAction("Index", "Coordinador");
 
                 case 4: // Aspirante
-                    // Los datos de sesión propios del aspirante (AspiranteID, Matricula,
-                    // Folio) ya los deja listos SessionHelper.PopulateSession de arriba.
-                    var aspirante = db.Aspirantes
-                        .FirstOrDefault(a => a.UsuarioID == user.UsuarioID);
+                    // Los datos de sesión propios del aspirante (AspiranteID, Folio) ya
+                    // los deja listos SessionHelper.PopulateSession de arriba.
 
-                    if (aspirante != null)
+                    // Check for dummy/placeholder email (legacy bug fix)
+                    if (user.CorreoElectronico.Contains("@example.com") || user.CorreoElectronico.Contains("@dummy.com"))
                     {
-                        // Check for dummy/placeholder email (legacy bug fix)
-                        if (user.CorreoElectronico.Contains("@example.com") || user.CorreoElectronico.Contains("@dummy.com"))
-                        {
-                            TempData["Warning"] = "Por favor, actualice su correo electrónico.";
-                            return RedirectToAction("EditarEmail", "Aspirante");
-                        }
+                        TempData["Warning"] = "Por favor, actualice su correo electrónico.";
+                        return RedirectToAction("EditarEmail", "Aspirante");
                     }
                     return RedirectToAction("Index", "Aspirante");
 

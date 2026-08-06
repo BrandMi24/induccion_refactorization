@@ -13,6 +13,7 @@ namespace induccion_refactorization.Helpers
     {
         public const int RolAdmin = 1;
         public const int RolCoordinador = 3;
+        public const int RolAspirante = 4;
         public const int RolMaestro = 5;
 
         public static bool IsScopedRole(int rolId)

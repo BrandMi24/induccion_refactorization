@@ -24,21 +24,17 @@
             @if (rolID == 1)
             {
                 <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Index" }) ? "active" : "")" href="@Url.Action("Index", "Admin")"><i class="fas fa-tachometer-alt"></i> Panel Principal</a></li>
-                if (puedeVer("GestionContenido"))
+                if (puedeVer("GestionCarreras"))
                 {
-                    <li class="nav-item"><a class="nav-link @(isActiveSection("InductionMaintenance", null) ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
-                }
-                if (puedeVer("GestionUsuarios"))
-                {
-                    <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionUsuarios", "CreateUsuario", "EditUsuario" }) ? "active" : "")" href="@Url.Action("GestionUsuarios", "Admin")"><i class="fas fa-user-cog"></i> Gestión de Usuarios</a></li>
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionCarreras", "CreateCarrera", "EditCarrera" }) ? "active" : "")" href="@Url.Action("GestionCarreras", "Admin")"><i class="fas fa-graduation-cap"></i> Carreras</a></li>
                 }
                 if (puedeVer("GestionPeriodos"))
                 {
                     <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionPeriodos", "CreatePeriodo", "EditPeriodo" }) ? "active" : "")" href="@Url.Action("GestionPeriodos", "Admin")"><i class="fas fa-calendar-alt"></i> Periodos</a></li>
                 }
-                if (puedeVer("GestionRoles"))
+                if (puedeVer("GestionUsuarios"))
                 {
-                    <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "Permisos" }) ? "active" : "")" href="@Url.Action("Permisos", "Admin")"><i class="fas fa-shield-alt"></i> Permisos por Rol</a></li>
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Admin", new[] { "GestionUsuarios", "CreateUsuario", "EditUsuario" }) ? "active" : "")" href="@Url.Action("GestionUsuarios", "Admin")"><i class="fas fa-user-cog"></i> Gestión de Usuarios</a></li>
                 }
                 if (puedeVer("Reportes"))
                 {
@@ -52,17 +48,9 @@
                 {
                     <li class="nav-item"><a class="nav-link @(isActiveSection("InductionMaintenance", null) ? "active" : "")" href="@Url.Action("Index", "InductionMaintenance")"><i class="fas fa-book"></i> Gestión de Contenido</a></li>
                 }
-                if (puedeVer("RevisarEntregables"))
-                {
-                    <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "RevisarEntregas", "Calificar", "DownloadSubmission" }) ? "active" : "")" href="@Url.Action("RevisarEntregas", "Coordinador")"><i class="fas fa-clipboard-check"></i> Revisar Entregas</a></li>
-                }
-                if (puedeVer("RevisarUnidades"))
-                {
-                    <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "RevisarProgreso", "CalificarProgreso" }) ? "active" : "")" href="@Url.Action("RevisarProgreso", "Coordinador")"><i class="fas fa-list-check"></i> Revisar Unidades</a></li>
-                }
                 if (puedeVer("MisAspirantes"))
                 {
-                    <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "MisAspirantes", "AspiranteDetalle", "AsignarUnidad" }) ? "active" : "")" href="@Url.Action("MisAspirantes", "Coordinador")"><i class="fas fa-user-graduate"></i> Mis Aspirantes</a></li>
+                    <li class="nav-item"><a class="nav-link @(isActiveSection("Coordinador", new[] { "MisAspirantes", "AspiranteDetalle", "AsignarUnidad", "Revisar", "DownloadSubmission" }) ? "active" : "")" href="@Url.Action("MisAspirantes", "Coordinador")"><i class="fas fa-user-graduate"></i> Mis Aspirantes</a></li>
                 }
                 if (rolID == 3 && puedeVer("MisMaestros"))
                 {
